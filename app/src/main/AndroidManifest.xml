@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="eu.monniot.resync">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ReSync">
+        <activity
+            android:name=".LauncherActivity"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.ReSync.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".DeepLinkActivity"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.ReSync.NoActionBar">
+
+            <tools:validation testUrl="https://www.fanfiction.net/s/13581651/36/How-to-get-engaged-to-Hermione-Granger" />
+            <tools:validation testUrl="https://m.fanfiction.net/s/13673199/" />
+            <tools:validation testUrl="https://m.fanfiction.net/s/13673199/1/" />
+            <tools:validation testUrl="https://m.fanfiction.net/s/13673199/2/" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="m.fanfiction.net"
+                    android:pathPrefix="/s" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="www.fanfiction.net"
+                    android:pathPrefix="/s" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
