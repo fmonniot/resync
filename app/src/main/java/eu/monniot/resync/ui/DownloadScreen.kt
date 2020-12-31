@@ -367,6 +367,7 @@ class BuildAndUpload(
 
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
+        val context = AmbientContext.current
 
         LaunchedEffect(storyId) {
             val epub = makeEpub(chapters)
@@ -377,9 +378,17 @@ class BuildAndUpload(
                 "${chapters[0].storyName} - Ch ${chapters[0].num}.epub"
             }
 
-            rmCloud.uploadEpub(fileName, epub)
+            val tokens = readTokens(context)
 
-            state.value = Done(onDone)
+            if (tokens == null) {
+                // TODO save epub for later and display it in the LauncherActivity
+                // Also maybe have a custom screen to tell the user what happened ?
+                state.value = Done(onDone)
+            } else {
+                val rmCloud = RmClient(tokens)
+                rmCloud.uploadEpub(fileName, epub)
+                state.value = Done(onDone)
+            }
         }
 
         Text("Uploading to the reMarkable Cloud")

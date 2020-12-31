@@ -2,7 +2,6 @@ package eu.monniot.resync
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -13,19 +12,28 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import eu.monniot.resync.rmcloud.readTokens
 import eu.monniot.resync.ui.ReSyncTheme
+import eu.monniot.resync.ui.SetupRemarkableScreen
 
 
 class LauncherActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val tokens = mutableStateOf(readTokens(applicationContext))
 
         setContent {
             ReSyncTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(color = MaterialTheme.colors.background) {
-                    Greeting()
+
+                    if (tokens.value == null) {
+                        SetupRemarkableScreen {
+                            tokens.value = it
+                        }
+                    } else {
+                        Greeting()
+                    }
                 }
             }
         }
@@ -54,7 +62,7 @@ fun Greeting() {
         )
 
         Button(onClick = { /*TODO*/ }) {
-            Text("Sync")
+            Text("Sync (TODO)")
         }
     }
 }

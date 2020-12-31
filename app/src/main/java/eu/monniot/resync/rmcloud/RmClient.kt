@@ -6,23 +6,27 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.TimeUnit
 
-class RmClient(private val deviceToken: String) {
+// TODO Creating OkHttp client should be a common function
+suspend fun exchangeCodeForDeviceToken(code: String): String {
+    val logging = HttpLoggingInterceptor()
+    logging.setLevel(HttpLoggingInterceptor.Level.BODY)
 
-    companion object {
-        /**
-         * Create a client based on an existing device token. This method will throw if it is
-         * incapable of retrieving said token.
-         *
-         * @throws IllegalStateException when there is no device token stored in shared preferences
-         */
-        fun fromSharedPreferences(): RmClient {
+    val client = OkHttpClient.Builder()
+        .readTimeout(15, TimeUnit.SECONDS) // This API is very often slow (10+ seconds)
+        .addInterceptor(logging)
+        .build()
 
-            return RmClient("") // TODO: 12/22/20
-        }
-    }
+    val remarkableApi = MyRemarkableApi.build(client)
 
-    private var userToken: String? = null
+    return remarkableApi.register(RegistrationPayload.fromCode(code))
+}
+
+class RmClient(tokens: Tokens) {
+
+    private val deviceToken: String
+    private var userToken: String?
 
     private val client: OkHttpClient
     private val remarkableApi: MyRemarkableApi
@@ -30,7 +34,7 @@ class RmClient(private val deviceToken: String) {
 
     init {
         val logging = HttpLoggingInterceptor()
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY)
+        logging.setLevel(HttpLoggingInterceptor.Level.BASIC)
 
         client = OkHttpClient.Builder()
             .addInterceptor(logging)
@@ -38,6 +42,9 @@ class RmClient(private val deviceToken: String) {
 
         remarkableApi = MyRemarkableApi.build(client)
         documentStorage = DocumentStorageApi.build(client)
+
+        deviceToken = tokens.device
+        userToken = tokens.user
     }
 
     private suspend fun userToken(): String {
