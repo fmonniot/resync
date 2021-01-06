@@ -21,14 +21,16 @@ sealed class ChapterSelection {
     data class One(val num: ChapterNum) : ChapterSelection()
     data class Range(val start: ChapterNum, val end: ChapterNum) : ChapterSelection()
 
-    fun firstChapter(): ChapterNum = when(this) {
+    fun firstChapter(): ChapterNum = when (this) {
         All -> 1
         is One -> num
         is Range -> start
     }
 
-    fun lastChapter(totalChapters: ChapterNum? = null): ChapterNum? = when(this) {
-        All -> if(totalChapters == null) null else { if (totalChapters > 1) totalChapters else null }
+    fun lastChapter(totalChapters: ChapterNum? = null): ChapterNum? = when (this) {
+        All -> if (totalChapters == null) null else {
+            if (totalChapters > 1) totalChapters else null
+        }
         is One -> null
         is Range -> if (end > firstChapter()) end else null
     }
@@ -43,7 +45,6 @@ fun GetChaptersView(
     c: CompletableDeferred<List<Chapter>>
 ) {
     val driver = Driver()
-
 
     LaunchedEffect(subject = storyId) {
         println("Drawing GetChaptersView(storyId=$storyId, chapterSelection=$chapterSelection)")
@@ -60,7 +61,9 @@ fun GetChaptersView(
         // Now check if we need to download remaining chapters or not
         val endChapterNum = chapterSelection.lastChapter(chapter.totalChapters)
         if (endChapterNum != null) {
-            for (i in firstChapterNum..endChapterNum) {
+            // + 1 because we already have firstChapterNum,
+            // basically I want ]first, last] instead of [first, last]
+            for (i in (firstChapterNum + 1)..endChapterNum) {
                 chapters.add(driver.readChapter(storyId, i))
             }
         }
@@ -111,14 +114,14 @@ class Driver {
                 val scriptHtml =
                     "javascript:window.grabber.%s(new XMLSerializer().serializeToString(document.querySelector('%s')));"
                 val scriptChapterName =
-                    "javascript:window.grabber.onChapterName((document.querySelector('#content').childNodes[16] || {}).textContent || '');"
+                    "javascript:window.grabber.onChapterName((Array.apply([], document.querySelector('#content').childNodes || []).filter(n => n.nodeType === 3).pop() || {}).textContent);"
                 val scriptTotalChapters =
-                    "javascript:window.grabber.onTotalChapters((Array.apply([], document.querySelectorAll('#top > div:nth-child(7) > a') || []).filter(n => n.text !== 'Next »').pop() || {}).text)"
+                    "javascript:window.grabber.onTotalChapters((Array.apply([], document.querySelector('#top > div[align]').childNodes || []).filter(n => n.href !== undefined && n.text !== 'Next »').map(n => n.textContent) || []).pop())"
 
                 view?.loadUrl(scriptHtml.format("onChapterText", ".storycontent"))
                 view?.loadUrl(scriptText.format("onStoryName", "#content > div > b"))
-                view?.loadUrl(scriptChapterName)
                 view?.loadUrl(scriptText.format("onAuthorName", "#content > div > a"))
+                view?.loadUrl(scriptChapterName)
                 view?.loadUrl(scriptTotalChapters)
             }
         }
@@ -151,7 +154,7 @@ class JsInterface(
 
     @JavascriptInterface
     fun onChapterText(html: String?) {
-        println("onChapterText")
+        println("onChapterText: [redacted]")
         if (html == null) {
             println("WARN: Got empty story text")
         } else {
@@ -161,7 +164,7 @@ class JsInterface(
 
     @JavascriptInterface
     fun onChapterName(html: String?) {
-        println("onChapterName")
+        println("onChapterName: |$html|")
         if (html == null) {
             println("WARN: Got empty chapter name")
         } else {
@@ -176,7 +179,7 @@ class JsInterface(
 
     @JavascriptInterface
     fun onStoryName(html: String?) {
-        println("onStoryName")
+        println("onStoryName: $html")
         if (html == null) {
             println("WARN: Got empty story name")
         } else {
@@ -186,7 +189,7 @@ class JsInterface(
 
     @JavascriptInterface
     fun onAuthorName(html: String?) {
-        println("onAuthorName")
+        println("onAuthorName: $html")
         if (html == null) {
             println("WARN: Got empty author name")
         } else {
@@ -196,7 +199,7 @@ class JsInterface(
 
     @JavascriptInterface
     fun onTotalChapters(html: String?) {
-        println("onTotalChapters")
+        println("onTotalChapters: $html")
 
         if (html == "undefined") {
             // One-chapter story
