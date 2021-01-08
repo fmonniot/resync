@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.ui.platform.setContent
+import eu.monniot.resync.ui.ChapterSelection
 import eu.monniot.resync.ui.DownloadScreen
 import eu.monniot.resync.ui.ReSyncTheme
 
@@ -28,6 +29,8 @@ class DeepLinkActivity : AppCompatActivity() {
         val storyId = rawStoryId.toInt()
         val chapterNumber = rawChNum?.toInt()
 
+        val chapterSelection =
+            if (chapterNumber != null) ChapterSelection.One(chapterNumber) else ChapterSelection.All
 
         setContent {
             ReSyncTheme {
@@ -36,7 +39,7 @@ class DeepLinkActivity : AppCompatActivity() {
 
                     DownloadScreen(
                         storyId,
-                        chapterNumber,
+                        chapterSelection,
                         askConfirmation = true,
                         onDone = { finish() }
                     )

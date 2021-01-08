@@ -6,13 +6,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.AmbientContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
-import eu.monniot.resync.rmcloud.RmCloud
+import eu.monniot.resync.rmcloud.readTokens
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 
@@ -92,7 +93,8 @@ class FetchFirstChapter(
 
             if (firstChapter.totalChapters == 1) {
                 // There is only one chapter, choice of story/chapter is the same
-                state.value = BuildAndUpload(onDone, storyId, listOf(firstChapter))
+                state.value =
+                    BuildAndUpload(onDone, storyId, listOf(firstChapter), wholeStory = true)
             } else {
 
                 if (askConfirmation) {
@@ -100,14 +102,14 @@ class FetchFirstChapter(
                 } else {
                     // Automatic download
 
-                    val last = chapterSelection.lastChapter(firstChapter.totalChapters)
-
-                    if (last != null && last > firstChapter.num) {
-                        // More chapters needs to be downloaded
-                        state.value = FetchAllChapters(onDone, storyId)
+                    if (chapterSelection is ChapterSelection.One && chapterSelection.num == firstChapter.num) {
+                        // Specific chapter selected and we have it in memory, building
+                        state.value = BuildAndUpload(
+                            onDone, storyId, listOf(firstChapter), wholeStory = false
+                        )
                     } else {
-                        // Specific chapter selected, building
-                        state.value = BuildAndUpload(onDone, storyId, listOf(firstChapter))
+                        // More chapters needs to be downloaded
+                        state.value = FetchAllChapters(onDone, storyId, chapterSelection)
                     }
                 }
             }
@@ -282,12 +284,23 @@ class AskConfirmation(
             SyncChoice(
                 onStorySelected = {
                     if (firstChapter.totalChapters > 1) {
-                        state.value = FetchAllChapters(onDone, storyId)
+                        state.value = FetchAllChapters(onDone, storyId, ChapterSelection.All)
                     } else {
-                        state.value = BuildAndUpload(onDone, storyId, listOf(firstChapter))
+                        state.value =
+                            BuildAndUpload(onDone, storyId, listOf(firstChapter), wholeStory = true)
                     }
                 }, onChapterSelected = {
-                    state.value = BuildAndUpload(onDone, storyId, listOf(firstChapter))
+                    println("onChapterSelected(selection=$it)")
+                    if (it is ChapterSelection.One && it.num == firstChapter.num) {
+                        state.value = BuildAndUpload(
+                            onDone,
+                            storyId,
+                            listOf(firstChapter),
+                            wholeStory = false
+                        )
+                    } else {
+                        state.value = FetchAllChapters(onDone, storyId, it)
+                    }
                 }
             )
         }
@@ -336,22 +349,28 @@ fun AskConfirmationSyncPreview() {
 }
 
 
-class FetchAllChapters(private val onDone: () -> Unit, private val storyId: StoryId) :
+class FetchAllChapters(
+    private val onDone: () -> Unit,
+    private val storyId: StoryId,
+    private val chapterSelection: ChapterSelection
+) :
     LinkCollectionState() {
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
+        println("FetchAllChapters(storyId=$storyId, chapterSelection=$chapterSelection)")
         val deferred = CompletableDeferred<List<Chapter>>()
 
         LaunchedEffect(subject = storyId) {
             val chapters = deferred.await()
 
-            state.value = BuildAndUpload(onDone, storyId, chapters)
+            state.value =
+                BuildAndUpload(onDone, storyId, chapters, chapterSelection is ChapterSelection.All)
         }
 
         Column {
             Text(text = "Fetching Story")
 
-            GetChaptersView(storyId, ChapterSelection.All, deferred)
+            GetChaptersView(storyId, chapterSelection, deferred)
         }
     }
 }
@@ -360,20 +379,23 @@ class BuildAndUpload(
     private val onDone: () -> Unit,
     private val storyId: StoryId,
     private val chapters: List<Chapter>,
+    private val wholeStory: Boolean
 ) : LinkCollectionState() {
-
-    // TODO suspend and load device token from storage (as well as existing user token)
-    private val rmCloud = RmClient(RmCloud.DEVICE_TOKEN)
 
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
+        println("BuildAndUpload(storyId=$storyId, chapters=${chapters.map { it.num }})")
         val context = AmbientContext.current
 
         LaunchedEffect(storyId) {
             val epub = makeEpub(chapters)
 
             val fileName = if (chapters.size > 1) {
-                "${chapters[0].storyName}.epub"
+                if (wholeStory) {
+                    "${chapters[0].storyName}.epub"
+                } else {
+                    "${chapters[0].storyName} - Ch ${chapters.first().num}-${chapters.last().num}.epub"
+                }
             } else {
                 "${chapters[0].storyName} - Ch ${chapters[0].num}.epub"
             }
