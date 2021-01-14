@@ -15,7 +15,9 @@ import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.rmcloud.readTokens
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
 fun DownloadScreen(
@@ -109,7 +111,7 @@ class FetchFirstChapter(
                         )
                     } else {
                         // More chapters needs to be downloaded
-                        state.value = FetchAllChapters(onDone, storyId, chapterSelection)
+                        state.value = FetchAllChapters(onDone, storyId, chapterSelection, firstChapter.totalChapters)
                     }
                 }
             }
@@ -127,7 +129,9 @@ class FetchFirstChapter(
             Column(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(),
             ) {
 
                 Text(
@@ -147,7 +151,9 @@ class FetchFirstChapter(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 CircularProgressIndicator(
-                    modifier = Modifier.width(100.dp).height(100.dp)
+                    modifier = Modifier
+                        .width(100.dp)
+                        .height(100.dp)
                         .align(Alignment.CenterHorizontally)
                 )
 
@@ -207,13 +213,17 @@ class AskConfirmation(
     @Composable
     fun SyncChoice(onStorySelected: () -> Unit, onChapterSelected: (ChapterSelection) -> Unit) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
             Surface(elevation = 1.dp) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Button(onClick = onStorySelected) {
@@ -226,7 +236,9 @@ class AskConfirmation(
 
             Surface(elevation = 1.dp) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp, 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp, 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 
@@ -273,18 +285,24 @@ class AskConfirmation(
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(0.dp, 40.dp, 0.dp, 16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(0.dp, 40.dp, 0.dp, 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
             StoryDetails()
 
-            Spacer(modifier = Modifier.weight(1f).fillMaxWidth())
+            Spacer(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
 
             SyncChoice(
                 onStorySelected = {
                     if (firstChapter.totalChapters > 1) {
-                        state.value = FetchAllChapters(onDone, storyId, ChapterSelection.All)
+                        state.value = FetchAllChapters(onDone, storyId, ChapterSelection.All, firstChapter.totalChapters)
                     } else {
                         state.value =
                             BuildAndUpload(onDone, storyId, listOf(firstChapter), wholeStory = true)
@@ -299,7 +317,7 @@ class AskConfirmation(
                             wholeStory = false
                         )
                     } else {
-                        state.value = FetchAllChapters(onDone, storyId, it)
+                        state.value = FetchAllChapters(onDone, storyId, it, firstChapter.totalChapters)
                     }
                 }
             )
@@ -352,13 +370,17 @@ fun AskConfirmationSyncPreview() {
 class FetchAllChapters(
     private val onDone: () -> Unit,
     private val storyId: StoryId,
-    private val chapterSelection: ChapterSelection
+    private val chapterSelection: ChapterSelection,
+    private val totalChapters: Int,
+    private val noWebView: Boolean = false,
 ) :
     LinkCollectionState() {
+    @ExperimentalCoroutinesApi
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
         println("FetchAllChapters(storyId=$storyId, chapterSelection=$chapterSelection)")
         val deferred = CompletableDeferred<List<Chapter>>()
+        val currentChapterDlState = MutableStateFlow(chapterSelection.firstChapter())
 
         LaunchedEffect(subject = storyId) {
             val chapters = deferred.await()
@@ -367,12 +389,69 @@ class FetchAllChapters(
                 BuildAndUpload(onDone, storyId, chapters, chapterSelection is ChapterSelection.All)
         }
 
-        Column {
-            Text(text = "Fetching Story")
+        val currentChapter by currentChapterDlState.collectAsState()
 
-            GetChaptersView(storyId, chapterSelection, deferred)
+        Column {
+            // Hack to not render WebView in @Preview mode
+            if (!noWebView) {
+                GetChaptersView(storyId, chapterSelection, deferred, currentChapterDlState)
+            }
+
+            Column(
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(),
+            ) {
+
+                Text(
+                    text = "Fetching Story",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Box(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .height(100.dp)
+                        .align(Alignment.CenterHorizontally),
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    CircularProgressIndicator(
+                        progress = currentChapter.toFloat() / totalChapters,
+                        modifier = Modifier
+                            .fillMaxSize()
+                    )
+                    Text(
+                        text = "${currentChapter}/${totalChapters} chapters",
+                        style = MaterialTheme.typography.body2,
+                    )
+                }
+
+            }
         }
     }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Sync - Fetch all Chapters View"
+)
+@Composable
+fun FetchAllChaptersPreview() {
+    LinkCollectionStatePreviewContainer(
+        FetchAllChapters(
+            onDone = {},
+            storyId = 1,
+            chapterSelection = ChapterSelection.All,
+            totalChapters = 4,
+            noWebView = true
+        )
+    )
 }
 
 class BuildAndUpload(

@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 
 
 typealias StoryId = Int
@@ -42,7 +44,8 @@ sealed class ChapterSelection {
 fun GetChaptersView(
     storyId: StoryId,
     chapterSelection: ChapterSelection,
-    c: CompletableDeferred<List<Chapter>>
+    c: CompletableDeferred<List<Chapter>>,
+    currentChapterDownloading: MutableStateFlow<ChapterNum>? = null
 ) {
     val driver = Driver()
 
@@ -54,6 +57,7 @@ fun GetChaptersView(
 
         println("driver ready, reading first chapter")
         val firstChapterNum = chapterSelection.firstChapter()
+        currentChapterDownloading?.value = firstChapterNum
         val chapter = driver.readChapter(storyId, firstChapterNum)
 
         val chapters = mutableListOf(chapter)
@@ -64,6 +68,7 @@ fun GetChaptersView(
             // + 1 because we already have firstChapterNum,
             // basically I want ]first, last] instead of [first, last]
             for (i in (firstChapterNum + 1)..endChapterNum) {
+                currentChapterDownloading?.value = i
                 chapters.add(driver.readChapter(storyId, i))
             }
         }
