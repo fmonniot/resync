@@ -86,11 +86,11 @@ fun Book.addCover(chapter: Chapter, range: Pair<ChapterNum, ChapterNum>) {
 
     val content = """<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
-<body style="margin: 10% 15%;padding:0;">
-<h1 style="margin-top: 25%;width:100%;">${chapter.storyName}</h1>
-<h2 style="margin-top: 5%;">$subTitle</h2>
+<body style="margin: 10% 15%;padding:0;height: 80%;width: 70%;">
+<h1 style="margin-top: 25%;width:100%;text-align: center;">${chapter.storyName}</h1>
+<h2 style="margin-top: 5%;text-align: center;">$subTitle</h2>
 <hr style="margin:0 10% 0 10%"></hr>
-<h2>By ${chapter.author}</h2>
+<h2 style="text-align: center;">By ${chapter.author}</h2>
 </body>
 </html>"""
 
