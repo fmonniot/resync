@@ -89,7 +89,7 @@ class FetchFirstChapter(
         val deferred = CompletableDeferred<List<Chapter>>()
 
         // TODO See if we can put this into a separate method (to simplify logic testing)
-        LaunchedEffect(subject = storyId) {
+        LaunchedEffect(key1 = storyId) {
             val chapters = deferred.await()
             val firstChapter = chapters[0]
 
@@ -382,7 +382,7 @@ class FetchAllChapters(
         val deferred = CompletableDeferred<List<Chapter>>()
         val currentChapterDlState = MutableStateFlow(chapterSelection.firstChapter())
 
-        LaunchedEffect(subject = storyId) {
+        LaunchedEffect(key1 = storyId) {
             val chapters = deferred.await()
 
             state.value =
@@ -502,7 +502,7 @@ class Done(val onDone: () -> Unit) : LinkCollectionState() {
 
         var countDown by remember { mutableStateOf(3) }
 
-        LaunchedEffect(subject = this) {
+        LaunchedEffect(key1 = this) {
 
             while (countDown > 0) {
                 delay(1000)

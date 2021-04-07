@@ -140,7 +140,7 @@ private sealed class SetupRemarkableStateMachine {
         override fun View(state: MutableState<SetupRemarkableStateMachine>) {
             val context = AmbientContext.current
 
-            LaunchedEffect(subject = "exchangingCode") {
+            LaunchedEffect(key1 = "exchangingCode") {
                 val token =
                     try {
                         exchangeCodeForDeviceToken(code)

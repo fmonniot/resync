@@ -2,7 +2,6 @@ package eu.monniot.resync
 
 import android.net.Uri
 import android.os.Bundle
-import android.os.Process
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface

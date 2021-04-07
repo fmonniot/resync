@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 
 
@@ -49,7 +48,7 @@ fun GetChaptersView(
 ) {
     val driver = Driver()
 
-    LaunchedEffect(subject = storyId) {
+    LaunchedEffect(key1 = storyId) {
         println("Drawing GetChaptersView(storyId=$storyId, chapterSelection=$chapterSelection)")
 
         // wait for the driver to be attached to a running webview
