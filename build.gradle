@@ -1,7 +1,7 @@
 buildscript {
     ext {
         kotlin_version = '1.4.30' //.31 in beta
-        compose_version = '1.0.0-alpha12'
+        compose_version = '1.0.0-beta04'
     }
 
     repositories {
