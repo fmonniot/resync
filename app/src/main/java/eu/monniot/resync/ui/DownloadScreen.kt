@@ -6,7 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.AmbientContext
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
@@ -464,7 +464,7 @@ class BuildAndUpload(
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
         println("BuildAndUpload(storyId=$storyId, chapters=${chapters.map { it.num }})")
-        val context = AmbientContext.current
+        val context = LocalContext.current
 
         LaunchedEffect(storyId) {
             val epub = makeEpub(chapters)

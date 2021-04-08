@@ -1,6 +1,8 @@
 package eu.monniot.resync.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
@@ -9,9 +11,7 @@ import androidx.compose.material.TextField
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.gesture.tapGestureFilter
-import androidx.compose.ui.platform.AmbientContext
-import androidx.compose.ui.platform.AmbientUriHandler
+import androidx.compose.ui.platform.*
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import eu.monniot.resync.rmcloud.Tokens
 import eu.monniot.resync.rmcloud.exchangeCodeForDeviceToken
 import eu.monniot.resync.rmcloud.saveTokens
-import java.lang.RuntimeException
 
 @Composable
 fun SetupRemarkableScreen(onDone: (Tokens) -> Unit) {
@@ -49,7 +48,7 @@ private sealed class SetupRemarkableStateMachine {
         override fun View(state: MutableState<SetupRemarkableStateMachine>) {
 
             var code by remember { mutableStateOf("") }
-            val uriHandler = AmbientUriHandler.current
+            val uriHandler = LocalUriHandler.current
 
             Column(
                 modifier = Modifier.padding(16.dp, 32.dp),
@@ -74,7 +73,7 @@ private sealed class SetupRemarkableStateMachine {
                         "Go to: my.remarkable.com",
                         style = MaterialTheme.typography.h6,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.tapGestureFilter {
+                        modifier = Modifier.clickable {
                             uriHandler.openUri("https://my.remarkable.com/connect/mobile")
                         }
                     )
@@ -92,6 +91,7 @@ private sealed class SetupRemarkableStateMachine {
                     )
                     Text("Enter your one-time code here", style = MaterialTheme.typography.body2)
 
+                    val focusManager = LocalFocusManager.current
                     TextField(
                         value = code,
                         onValueChange = {
@@ -111,12 +111,14 @@ private sealed class SetupRemarkableStateMachine {
                             keyboardType = KeyboardType.Text,
                             imeAction = ImeAction.Done
                         ),
-                        onImeActionPerformed = { action, controller ->
-                            println("debug: ime action = $action")
-                            controller?.hideSoftwareKeyboard()
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // Hide the soft keyboard
+                                focusManager.clearFocus()
 
-                            state.value = ExchangeCode(code, onDone)
-                        }
+                                state.value = ExchangeCode(code, onDone)
+                            }
+                        )
                     )
                 }
 
@@ -138,7 +140,7 @@ private sealed class SetupRemarkableStateMachine {
 
         @Composable
         override fun View(state: MutableState<SetupRemarkableStateMachine>) {
-            val context = AmbientContext.current
+            val context = LocalContext.current
 
             LaunchedEffect(key1 = "exchangingCode") {
                 val token =

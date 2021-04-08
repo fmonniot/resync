@@ -2,10 +2,10 @@ package eu.monniot.resync
 
 import android.net.Uri
 import android.os.Bundle
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.ui.platform.setContent
 import eu.monniot.resync.ui.ChapterSelection
 import eu.monniot.resync.ui.DownloadScreen
 import eu.monniot.resync.ui.ReSyncTheme
@@ -31,7 +31,7 @@ class DeepLinkActivity : AppCompatActivity() {
         val chapterSelection =
             if (chapterNumber != null) ChapterSelection.One(chapterNumber) else ChapterSelection.All
 
-        setContent {
+        setContent(null) {
             ReSyncTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(color = MaterialTheme.colors.background) {

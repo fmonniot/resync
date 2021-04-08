@@ -1,13 +1,13 @@
 package eu.monniot.resync
 
 import android.os.Bundle
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.platform.setContent
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Devices
@@ -23,7 +23,7 @@ class LauncherActivity : AppCompatActivity() {
 
         val tokens = mutableStateOf(readTokens(applicationContext))
 
-        setContent {
+        setContent(null) {
             ReSyncTheme {
                 Surface(color = MaterialTheme.colors.background) {
 
