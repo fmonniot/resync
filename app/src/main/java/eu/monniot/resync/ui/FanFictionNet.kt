@@ -76,7 +76,7 @@ fun GetChaptersView(
     }
 
     // We need a web view to grab the fiction content
-    AndroidView(viewBlock = ::WebView, modifier = Modifier.size(1.dp, 1.dp)) { webView ->
+    AndroidView(factory = ::WebView, modifier = Modifier.size(1.dp, 1.dp)) { webView ->
         driver.installGrabber(webView)
     }
 }
