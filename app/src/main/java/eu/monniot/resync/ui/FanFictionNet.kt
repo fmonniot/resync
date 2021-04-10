@@ -7,6 +7,7 @@ import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -44,7 +45,7 @@ fun GetChaptersView(
     storyId: StoryId,
     chapterSelection: ChapterSelection,
     c: CompletableDeferred<List<Chapter>>,
-    currentChapterDownloading: MutableStateFlow<ChapterNum>? = null
+    currentChapterDownloading: MutableState<ChapterNum>? = null
 ) {
     val driver = Driver()
 

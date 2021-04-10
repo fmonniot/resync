@@ -17,7 +17,6 @@ import eu.monniot.resync.rmcloud.readTokens
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
 fun DownloadScreen(
@@ -111,7 +110,12 @@ class FetchFirstChapter(
                         )
                     } else {
                         // More chapters needs to be downloaded
-                        state.value = FetchAllChapters(onDone, storyId, chapterSelection, firstChapter.totalChapters)
+                        state.value = FetchAllChapters(
+                            onDone,
+                            storyId,
+                            chapterSelection,
+                            firstChapter.totalChapters
+                        )
                     }
                 }
             }
@@ -302,7 +306,12 @@ class AskConfirmation(
             SyncChoice(
                 onStorySelected = {
                     if (firstChapter.totalChapters > 1) {
-                        state.value = FetchAllChapters(onDone, storyId, ChapterSelection.All, firstChapter.totalChapters)
+                        state.value = FetchAllChapters(
+                            onDone,
+                            storyId,
+                            ChapterSelection.All,
+                            firstChapter.totalChapters
+                        )
                     } else {
                         state.value =
                             BuildAndUpload(onDone, storyId, listOf(firstChapter), wholeStory = true)
@@ -317,7 +326,8 @@ class AskConfirmation(
                             wholeStory = false
                         )
                     } else {
-                        state.value = FetchAllChapters(onDone, storyId, it, firstChapter.totalChapters)
+                        state.value =
+                            FetchAllChapters(onDone, storyId, it, firstChapter.totalChapters)
                     }
                 }
             )
@@ -380,7 +390,9 @@ class FetchAllChapters(
     override fun Screen(state: MutableState<LinkCollectionState>) {
         println("FetchAllChapters(storyId=$storyId, chapterSelection=$chapterSelection)")
         val deferred = CompletableDeferred<List<Chapter>>()
-        val currentChapterDlState = MutableStateFlow(chapterSelection.firstChapter())
+        val currentChapterDlState = remember {
+            mutableStateOf(chapterSelection.firstChapter())
+        }
 
         LaunchedEffect(key1 = storyId) {
             val chapters = deferred.await()
@@ -388,8 +400,6 @@ class FetchAllChapters(
             state.value =
                 BuildAndUpload(onDone, storyId, chapters, chapterSelection is ChapterSelection.All)
         }
-
-        val currentChapter by currentChapterDlState.collectAsState()
 
         Column {
             // Hack to not render WebView in @Preview mode
@@ -420,6 +430,7 @@ class FetchAllChapters(
                         .align(Alignment.CenterHorizontally),
                     contentAlignment = Alignment.Center
                 ) {
+                    val currentChapter by currentChapterDlState
 
                     CircularProgressIndicator(
                         progress = currentChapter.toFloat() / totalChapters,
