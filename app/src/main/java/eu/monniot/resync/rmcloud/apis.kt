@@ -19,7 +19,7 @@ interface MyRemarkableApi {
 
         fun build(client: OkHttpClient): MyRemarkableApi {
             val retrofit = Retrofit.Builder()
-                .baseUrl("https://my.remarkable.com")
+                .baseUrl("https://webapp-production-dot-remarkable-production.appspot.com")
                 .addConverterFactory(ScalarsConverterFactory.create())
                 .addConverterFactory(MoshiConverterFactory.create())
                 .client(client)
