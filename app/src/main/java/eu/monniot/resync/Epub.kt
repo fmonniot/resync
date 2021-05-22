@@ -1,5 +1,6 @@
 package eu.monniot.resync
 
+import android.text.TextUtils
 import eu.monniot.resync.ui.Chapter
 import eu.monniot.resync.ui.ChapterNum
 import kotlinx.coroutines.Dispatchers
@@ -54,8 +55,9 @@ suspend fun makeEpub(chapterList: List<Chapter>): ByteArray {
 }
 
 fun Book.addChapter(chapter: Chapter, insertTitle: Boolean) {
+    val chapterName = chapter.chapterName?.let { TextUtils.htmlEncode(it) } ?: ""
     val title = if (insertTitle) {
-        "<h2>${chapter.chapterName}</h2><hr style=\"width:100%;margin: 0 10% 0 10%;\"></hr>"
+        "<h2>${chapterName}</h2><hr style=\"width:100%;margin: 0 10% 0 10%;\"></hr>"
     } else ""
 
     val content = """<?xml version="1.0" encoding="UTF-8"?>
@@ -68,7 +70,7 @@ ${chapter.content.replace("xmlns=\"http://www.w3.org/1999/xhtml\"", "")}
 
     val resource = Resource(content.toByteArray(), "chapter_${chapter.num}.xhtml")
 
-    this.addSection(chapter.chapterName ?: "", resource)
+    this.addSection(chapterName ?: "", resource)
 }
 
 // Note that remarkable will ignore the layout when internally converting from epub to pdf.
