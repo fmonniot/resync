@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.flow.MutableStateFlow
 
 
 typealias StoryId = Int
@@ -120,8 +119,31 @@ class Driver {
                     "javascript:window.grabber.%s(new XMLSerializer().serializeToString(document.querySelector('%s')));"
                 val scriptChapterName =
                     "javascript:window.grabber.onChapterName((Array.apply([], document.querySelector('#content').childNodes || []).filter(n => n.nodeType === 3).pop() || {}).textContent);"
+
+                /* Un-minimized javascript
+
+                    function re(acc, current) {
+                        const [done, previous] = acc;
+
+                        if (done) {
+                            return [true, previous]
+                        } else {
+                            if (current.text === "Next »" || current.text === " Review") {
+                                return [true, previous]
+                            } else {
+                                return [false, current]
+                            }
+                        }
+                    }
+
+                    window.grabber.onTotalChapters(
+                        Array.apply([], document.querySelectorAll('#top div[align] a'))
+                            .reduce(re, [false, null])[1]
+                            .textContent
+                    )
+                */
                 val scriptTotalChapters =
-                    "javascript:window.grabber.onTotalChapters((Array.apply([], document.querySelector('#top > div[align]').childNodes || []).filter(n => n.href !== undefined && n.text !== 'Next »').map(n => n.textContent) || []).pop())"
+                    "javascript:function re(e,t){const[n,o]=e;return console.log(t.text),n?[!0,o]:\"Next »\"===t.text||\" Review\"===t.text?[!0,o]:[!1,t]}window.grabber.onTotalChapters(Array.apply([],document.querySelectorAll(\"#top div[align] a\")).reduce(re,[!1,null])[1].textContent);"
 
                 view?.loadUrl(scriptHtml.format("onChapterText", ".storycontent"))
                 view?.loadUrl(scriptText.format("onStoryName", "#content > div > b"))
@@ -206,15 +228,10 @@ class JsInterface(
     fun onTotalChapters(html: String?) {
         println("onTotalChapters: $html")
 
-        if (html == "undefined") {
-            // One-chapter story
-            totalChapters.complete(1)
-            return
-        }
-
         val n = html?.toIntOrNull()
         if (n == null) {
-            println("WARN: Invalid last chapters: $html")
+            // One-chapter story don't have a valid html (it returns the author instead)
+            totalChapters.complete(1)
         } else {
             totalChapters.complete(n)
         }
