@@ -385,6 +385,9 @@ class FetchAllChapters(
     private val noWebView: Boolean = false,
 ) :
     LinkCollectionState() {
+
+    // TODO Extract effect into a dedicated non @Composable function
+
     @ExperimentalCoroutinesApi
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
@@ -432,6 +435,10 @@ class FetchAllChapters(
                 ) {
                     val currentChapter by currentChapterDlState
 
+                    // TODO We should change the current/total numbers to start from 0
+                    // Currently it's a bit strange when getting, say, the last 5 chapters
+                    // as the wheel's progression will start at the end.
+                    // eg. start at 45 and end ta 50, progression is from 90 to 100%.
                     CircularProgressIndicator(
                         progress = currentChapter.toFloat() / totalChapters,
                         modifier = Modifier
@@ -471,6 +478,8 @@ class BuildAndUpload(
     private val chapters: List<Chapter>,
     private val wholeStory: Boolean
 ) : LinkCollectionState() {
+
+    // TODO Extract effect into a dedicated non @Composable function
 
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {

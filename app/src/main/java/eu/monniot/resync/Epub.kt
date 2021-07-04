@@ -70,7 +70,7 @@ ${chapter.content.replace("xmlns=\"http://www.w3.org/1999/xhtml\"", "")}
 
     val resource = Resource(content.toByteArray(), "chapter_${chapter.num}.xhtml")
 
-    this.addSection(chapterName ?: "", resource)
+    this.addSection(chapterName, resource)
 }
 
 // Note that remarkable will ignore the layout when internally converting from epub to pdf.
