@@ -77,7 +77,7 @@ dependencies {
         exclude group: 'org.slf4j'
         exclude group: 'xmlpull'
     }
-    implementation 'org.slf4j:slf4j-android:1.7.30'
+    implementation 'org.slf4j:slf4j-android:1.7.31'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.0-native-mt'
