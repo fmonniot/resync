@@ -66,6 +66,26 @@ interface DocumentStorageApi {
     }
 }
 
+/*
+TODO Inline in java class (and refine type if needed)
+Field	Type	Description
+ID	uuid	The unique ID of this object. UUID-4 format. This is always required!
+Version	integer	The item's version counting starts at 1
+Message	string	This is used in API replies to return error messages regarding this item
+Success	boolean	This is used in API replies to signal that an error occurred handling this item (=false)
+BlobURLGet	string	the download URL
+BlobURLGetExpires	datetime	when above URL expires
+BlobURLPut	string	Where the data for the file can be uploaded
+BlobURLPutExpires	datetime	when above URL expires
+ModifiedClient	datetime	The last modified date time as set on the client that created the item
+Type	type	The type of the object. See below for available types
+VissibleName	string	The file's label. Yes, there is a typo in this key.
+CurrentPage	integer	The currently open page, starting at 0
+Bookmarked	boolean	is this bookmarked?
+Parent	uuid	The ID of the parent object or empty if this is a top level object
+
+datetimes are specified in ISO 8601 format.
+ */
 data class Document(
     val ID: String,
     val Version: Int,

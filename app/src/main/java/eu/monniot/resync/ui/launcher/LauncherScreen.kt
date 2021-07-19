@@ -1,6 +1,5 @@
 package eu.monniot.resync.ui.launcher
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
@@ -20,7 +19,9 @@ enum class LauncherScreenItem(val sectionName: String, val icon: ImageVector) {
 }
 
 @Composable
-fun LauncherScreen(initialScreenItem: LauncherScreenItem = LauncherScreenItem.Search) {
+fun LauncherScreen(
+    initialScreenItem: LauncherScreenItem = LauncherScreenItem.Search
+) {
     var selectedItem by remember { mutableStateOf(initialScreenItem) }
 
     Scaffold(
@@ -28,14 +29,7 @@ fun LauncherScreen(initialScreenItem: LauncherScreenItem = LauncherScreenItem.Se
         content = {
             when (selectedItem) {
                 LauncherScreenItem.Search -> SearchStoryScreen()
-                LauncherScreenItem.Consolidate ->
-                    // TODO Add a way to group together existing stories.
-                    // As time pass, I found out that I have a lot of epub
-                    // generated for the same story: generally one per chapter.
-                    // It would be nice to offer a UI showing all fragmented
-                    // stories and offer a way to merge them into one file.
-                    // A Story Defragmenter of sort :grin:
-                    Text("TODO")
+                LauncherScreenItem.Consolidate -> ConsolidateScreen()
                 LauncherScreenItem.Experimental -> TestingSavingAnimation()
             }
         },
@@ -82,6 +76,7 @@ fun LauncherSearchPreview() {
     }
 }
 
+/* viewModel creation isn't supported in preview, so we can't do that one (yet ?)
 @Preview(
     showBackground = true,
     device = Devices.PIXEL_3,
@@ -94,6 +89,7 @@ fun LauncherConsolidatePreview() {
         LauncherScreen(LauncherScreenItem.Consolidate)
     }
 }
+*/
 
 @Preview(
     showBackground = true,
