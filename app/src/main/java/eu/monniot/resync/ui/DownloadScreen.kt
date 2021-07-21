@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import eu.monniot.resync.FileName
 import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.rmcloud.readTokens
@@ -488,17 +489,7 @@ class BuildAndUpload(
 
         LaunchedEffect(storyId) {
             val epub = makeEpub(chapters)
-
-            val fileName = if (chapters.size > 1) {
-                if (wholeStory) {
-                    "${chapters[0].storyName}.epub"
-                } else {
-                    "${chapters[0].storyName} - Ch ${chapters.first().num}-${chapters.last().num}.epub"
-                }
-            } else {
-                "${chapters[0].storyName} - Ch ${chapters[0].num}.epub"
-            }
-
+            val fileName = FileName.make(chapters, wholeStory)
             val tokens = readTokens(context)
 
             if (tokens == null) {
