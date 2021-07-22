@@ -1,5 +1,7 @@
 package eu.monniot.resync.ui.launcher
 
+import android.util.Log
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
@@ -52,7 +54,12 @@ fun LauncherScreen(
 
                 // TODO Only in debug mode
                 BottomNavigationItem(
-                    icon = { Icon(LauncherScreenItem.Experimental.icon, contentDescription = null) },
+                    icon = {
+                        Icon(
+                            LauncherScreenItem.Experimental.icon,
+                            contentDescription = null
+                        )
+                    },
                     label = { Text(LauncherScreenItem.Experimental.sectionName) },
                     selected = selectedItem == LauncherScreenItem.Experimental,
                     onClick = { selectedItem = LauncherScreenItem.Experimental }

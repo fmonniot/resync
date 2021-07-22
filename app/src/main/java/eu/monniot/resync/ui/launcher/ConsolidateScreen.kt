@@ -1,6 +1,8 @@
 package eu.monniot.resync.ui.launcher
 
 import android.app.Application
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,11 +17,16 @@ import eu.monniot.resync.database.Document
 import eu.monniot.resync.database.DocumentsDao
 import eu.monniot.resync.database.RemarkableDatabase
 import eu.monniot.resync.ui.ReSyncTheme
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import androidx.compose.material.ListItem
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import eu.monniot.resync.FileName
+import eu.monniot.resync.rmcloud.RmClient
+import eu.monniot.resync.rmcloud.readTokens
+import kotlinx.coroutines.flow.*
 
 // TODO Add a way to group together existing stories.
 // As time pass, I found out that I have a lot of epub
@@ -29,13 +36,15 @@ import androidx.compose.ui.unit.dp
 // A Story Defragmenter of sort :grin:
 @Composable
 fun ConsolidateScreen() {
-    // TODO Will it work with AndroidViewModel? Or will we have to provide a factory class?
     val model: ConsolidateViewModel = viewModel()
 
     val initialized by model.initialized
     val documents by model.documents.collectAsState(emptyList())
+    val refreshing by model.refreshing.collectAsState()
 
-    ConsolidateView(initialized, documents)
+    ConsolidateView(initialized, refreshing, documents) {
+        model.refreshDocuments()
+    }
 
     /* TODO List of steps
     // -- Room
@@ -73,50 +82,91 @@ fun ConsolidateScreen() {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun ConsolidateView(initialized: Boolean, documents: List<Document>) {
-    if(initialized) {
-        LazyColumn(modifier = Modifier.padding(top = 16.dp, bottom = 56.dp)) {
-            items(documents) { torrent ->
-                ListItem(
-                    text = { Text(torrent.name) },
-                    secondaryText = {
-                        // TODO Chapters available
-                        Text("Ch 1, 2, 3-7")
+fun ConsolidateView(
+    initialized: Boolean,
+    refreshing: Boolean,
+    documents: List<GroupedDocument>,
+    onRefresh: () -> Unit = {}
+) {
+    if (initialized) {
+        SwipeRefresh(
+            modifier = Modifier.fillMaxWidth(),
+            state = rememberSwipeRefreshState(refreshing),
+            onRefresh = onRefresh,
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(top = 16.dp, bottom = 56.dp)
+                    .fillMaxWidth()
+            ) {
+                if (documents.isEmpty()) {
+                    item {
+                        Text("No documents yet, pull to refresh")
                     }
-                )
+                } else {
+
+                    items(documents) { doc ->
+                        ListItem(
+                            text = { Text(doc.title) },
+                            secondaryText = {
+                                // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
+                                // See also GroupedDocument data class
+                                val text = doc.chapters.joinToString(",", prefix = "Ch ")
+                                Text(text)
+                            }
+                        )
+                    }
+                }
             }
         }
     } else {
-        Text("TODO: Select a folder")
+        Column {
+            Text("TODO: Select a folder")
+        }
     }
 
 }
 
-// TODO It seems AndroidViewModel can be instantiated automatically. Let's see if subclasses can too.
-class ConsolidateViewModel(application: Application): AndroidViewModel(application) {
-
-    // TODO Store Cloud access classes
+class ConsolidateViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao: DocumentsDao
+    private val rmCloud: RmClient?
+    private val isRefreshing = MutableStateFlow(false)
+    private val isInitialized = mutableStateOf(true)
 
-    // TODO Load the initialized state from preferences
-    //  (a parent have been set, null if root have been selected)
-    val initialized: State<Boolean> = mutableStateOf(false)
+    val initialized: State<Boolean>
+        get() = isInitialized
+    val refreshing: StateFlow<Boolean>
+        get() = isRefreshing.asStateFlow()
 
-    // TODO Expose grouped documents and not the row doc themselves
-    // We will probably also need a way to find back the story id
-    val documents: Flow<List<Document>>
+    val documents: Flow<List<GroupedDocument>>
 
     init {
         val db = RemarkableDatabase.getInstance(application)
 
+        val tokens = readTokens(application)
+        rmCloud = tokens?.let { RmClient(it) }
         dao = db.documentsDao()
-        documents = dao.getAll() // TODO Manage with parent
+
+
+        // TODO Load the initialized state from preferences
+        //  (a parent have been set, null if root have been selected)
+
+        // TODO Manage with parent
+        documents = dao.getAll().map { group(it) }
     }
 
     fun refreshDocuments() {
         viewModelScope.launch {
-
+            // TODO See how that integrate with a pull down compose widget
+            if (rmCloud != null) {
+                isRefreshing.emit(true)
+                syncRemoteFiles(rmCloud, dao)
+                isRefreshing.emit(false)
+            } else {
+                // Show a banner notification saying there aren't any
+                // remarkable account set up. Somehow.
+            }
         }
     }
 
@@ -126,27 +176,57 @@ class ConsolidateViewModel(application: Application): AndroidViewModel(applicati
         }
     }
 
-}
+    companion object {
+        fun group(documents: List<Document>): List<GroupedDocument> {
+            return documents.asSequence()
+                .map { FileName.parse(it.name) }
+                .map {
+                    if (it == null) null
+                    else {
+                        val (name, firstCh, lastCh) = it
 
-/*
-class TodoViewModelFactory(
-    private val application: Application
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel?> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST")
-        if (modelClass.isAssignableFrom(TodoViewModel::class.java)) {
-            return TodoViewModel(application) as T
+                        if (firstCh == null) null
+                        else {
+
+                            val l = mutableListOf(firstCh)
+                            if (lastCh != null) {
+                                l.addAll((firstCh + 1)..lastCh)
+                            }
+
+                            Pair(name, l)
+                        }
+
+                    }
+                }
+                .filterNotNull()
+                .groupBy(keySelector = { it.first }, valueTransform = { it.second })
+                .map {
+                    GroupedDocument(it.key, it.value.flatten().sorted())
+                }
+                .filter { it.chapters.size > 1 }
+                .toList()
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
+
+
+        suspend fun syncRemoteFiles(client: RmClient, dao: DocumentsDao) {
+            val docs = client.listDocuments().map { Document.fromApi(it) }
+
+            for (doc in docs) {
+                dao.upsert(doc)
+            }
+        }
     }
 }
-*/
+
+// TODO Change chapters representation, we want to keep range information
+// To know which one are already in a single file and aren't as important to consolidate
+data class GroupedDocument(val title: String, val chapters: List<Int>)
 
 @Preview
 @Composable
 fun ConsolidateViewUninitializedPreview() {
     ReSyncTheme {
-        ConsolidateView(false, emptyList())
+        ConsolidateView(false, false, emptyList())
     }
 }
 
@@ -155,7 +235,7 @@ fun ConsolidateViewUninitializedPreview() {
 @Composable
 fun ConsolidateViewInitializedNoDocsPreview() {
     ReSyncTheme {
-        ConsolidateView(true, emptyList())
+        ConsolidateView(true, false, emptyList())
     }
 }
 
@@ -163,11 +243,11 @@ fun ConsolidateViewInitializedNoDocsPreview() {
 @Composable
 fun ConsolidateViewInitializedDocsPreview() {
     val docs = listOf(
-        Document("id", 1, "type", "name 1", true, "parent"),
-        Document("id", 1, "type", "name 2", true, "parent"),
-        Document("id", 1, "type", "name 3", true, "parent")
+        GroupedDocument("Story A", listOf(1)),
+        GroupedDocument("Story B", listOf(1, 2, 4)),
+        GroupedDocument("Story C", listOf(2, 3))
     )
     ReSyncTheme {
-        ConsolidateView(true, docs)
+        ConsolidateView(true, false, docs)
     }
 }

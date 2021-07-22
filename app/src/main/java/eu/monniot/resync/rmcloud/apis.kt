@@ -38,6 +38,7 @@ data class RegistrationPayload(val code: String, val deviceDesc: String, val dev
 }
 
 interface DocumentStorageApi {
+
     @GET("/document-storage/json/2/docs")
     suspend fun list(@Header("Authorization") authorization: String): List<Document>
 

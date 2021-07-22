@@ -87,5 +87,10 @@ class RmClient(tokens: Tokens) {
         )
 
     }
+
+    suspend fun listDocuments(): List<Document> {
+        return documentStorage.list("Bearer ${userToken()}")
+    }
+
 }
 

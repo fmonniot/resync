@@ -13,3 +13,4 @@ what is going on (in no particular order).
 - https://blog.mindorks.com/implementing-android-jetpack-preferences
 - https://developer.android.com/topic/security/data#kotlin
 - https://blog.thefuntasty.com/from-custom-view-to-jetpack-compose-5a95e8d76a9a
+- https://google.github.io/accompanist/swiperefresh/
