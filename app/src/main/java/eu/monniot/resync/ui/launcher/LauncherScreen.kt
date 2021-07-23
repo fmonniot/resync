@@ -1,42 +1,45 @@
 package eu.monniot.resync.ui.launcher
 
-import android.util.Log
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Devices
 import eu.monniot.resync.ui.ReSyncTheme
+import eu.monniot.resync.ui.icons.LibraryBooks
+import eu.monniot.resync.ui.icons.Science
 
 
 enum class LauncherScreenItem(val sectionName: String, val icon: ImageVector) {
     Search("Search", Icons.Filled.Search),
-    Consolidate("Consolidate", Icons.Filled.List),
-    Experimental("Experimental", Icons.Filled.Notifications),
+    Consolidate("Consolidate", LibraryBooks),
+    Experimental("Experiments", Science),
 }
 
 @Composable
 fun LauncherScreen(
-    initialScreenItem: LauncherScreenItem = LauncherScreenItem.Search
+    initialScreenItem: LauncherScreenItem = LauncherScreenItem.Consolidate
 ) {
     var selectedItem by remember { mutableStateOf(initialScreenItem) }
 
     Scaffold(
         topBar = {},
-        content = {
-            when (selectedItem) {
-                LauncherScreenItem.Search -> SearchStoryScreen()
-                LauncherScreenItem.Consolidate -> ConsolidateScreen()
-                LauncherScreenItem.Experimental -> TestingSavingAnimation()
+        content = { padding ->
+            Box(modifier = Modifier.padding(padding)) {
+                when (selectedItem) {
+                    LauncherScreenItem.Search -> SearchStoryScreen()
+                    LauncherScreenItem.Consolidate -> ConsolidateScreen()
+                    LauncherScreenItem.Experimental -> TestingSavingAnimation()
+                }
             }
         },
         bottomBar = {
-            BottomNavigation() {
+            BottomNavigation {
 
                 BottomNavigationItem(
                     icon = { Icon(LauncherScreenItem.Search.icon, contentDescription = null) },
