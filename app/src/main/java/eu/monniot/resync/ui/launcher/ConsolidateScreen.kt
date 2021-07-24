@@ -1,14 +1,17 @@
 package eu.monniot.resync.ui.launcher
 
 import android.app.Application
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,9 +21,7 @@ import eu.monniot.resync.database.DocumentsDao
 import eu.monniot.resync.database.RemarkableDatabase
 import eu.monniot.resync.ui.ReSyncTheme
 import kotlinx.coroutines.launch
-import androidx.compose.material.ListItem
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import eu.monniot.resync.FileName
@@ -89,32 +90,58 @@ fun ConsolidateView(
     onRefresh: () -> Unit = {}
 ) {
     if (initialized) {
-        SwipeRefresh(
-            modifier = Modifier.fillMaxWidth(),
-            state = rememberSwipeRefreshState(refreshing),
-            onRefresh = onRefresh,
-        ) {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(top = 16.dp, bottom = 56.dp)
-                    .fillMaxWidth()
-            ) {
-                if (documents.isEmpty()) {
-                    item {
-                        Text("No documents yet, pull to refresh")
-                    }
-                } else {
 
-                    items(documents) { doc ->
-                        ListItem(
-                            text = { Text(doc.title) },
-                            secondaryText = {
-                                // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
-                                // See also GroupedDocument data class
-                                val text = doc.chapters.joinToString(",", prefix = "Ch ")
-                                Text(text)
-                            }
-                        )
+        val modalBottomSheetState = rememberModalBottomSheetState(
+            initialValue = ModalBottomSheetValue.Hidden
+        )
+        val coroutineScope = rememberCoroutineScope()
+
+        var bottomSheetDocument by remember { mutableStateOf<GroupedDocument?>(null) }
+
+        ModalBottomSheetLayout(
+            sheetState = modalBottomSheetState,
+            sheetContent = {
+                val doc = bottomSheetDocument
+                if (doc == null) {
+                    Text("No document selected")
+                } else {
+                    DocumentBottomSheetView(doc)
+                }
+            }
+        ) {
+
+            SwipeRefresh(
+                modifier = Modifier.fillMaxWidth(),
+                state = rememberSwipeRefreshState(refreshing),
+                onRefresh = onRefresh,
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (documents.isEmpty()) {
+                        item {
+                            Text("No documents yet, pull to refresh")
+                        }
+                    } else {
+
+                        // TODO Sort and group documents alphabetically
+                        items(documents) { doc ->
+                            ListItem(
+                                text = { Text(doc.title) },
+                                secondaryText = {
+                                    // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
+                                    // See also GroupedDocument data class
+                                    val text = doc.chapters.joinToString(",", prefix = "Ch ")
+                                    Text(text)
+                                },
+                                modifier = Modifier.clickable {
+                                    bottomSheetDocument = doc
+                                    coroutineScope.launch {
+                                        modalBottomSheetState.show()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -124,8 +151,84 @@ fun ConsolidateView(
             Text("TODO: Select a folder")
         }
     }
-
 }
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun DocumentBottomSheetView(document: GroupedDocument) {
+
+    ListItem(
+        text = {
+            Text(
+                text = document.title,
+                style = MaterialTheme.typography.h6
+            )
+        },
+        overlineText = {
+            Text(
+                text = "Story"
+            )
+        }
+    )
+
+    ListItem(
+        text = {
+            Text(
+                text = "${document.chapters}"
+            )
+        },
+        overlineText = {
+            Text(
+                text = "Files to consolidate"
+            )
+        }
+    )
+
+    // Arrow direction depends on text direction, as icon/trailing will probably be reversed
+    // TODO Might make sense to create our own component instead of trying to retrofit ListItem
+    // Look at ListItem and OneLine.ListItem
+    ListItem(
+        modifier = Modifier
+            .background(MaterialTheme.colors.primary)
+            .clickable {
+                println("Consolidate it !")
+            },
+        icon = {
+            Icon(
+                Icons.Rounded.KeyboardArrowRight,
+                contentDescription = "Consolidate the story",
+                tint = MaterialTheme.colors.onPrimary
+            )
+        },
+        trailing = {
+            Icon(
+                Icons.Rounded.KeyboardArrowLeft,
+                contentDescription = "Consolidate the story",
+                tint = MaterialTheme.colors.onPrimary
+            )
+        },
+        text = {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Consolidate",
+                    style = MaterialTheme.typography.button,
+                    modifier = Modifier,
+                    color = MaterialTheme.colors.onPrimary
+                )
+            }
+        }
+    )
+}
+
+@Preview
+@Composable
+fun DocumentBottomSheetViewPreview() {
+    val doc = GroupedDocument("Story B", listOf(1, 2, 4))
+    ReSyncTheme {
+        DocumentBottomSheetView(doc)
+    }
+}
+
 
 class ConsolidateViewModel(application: Application) : AndroidViewModel(application) {
 
