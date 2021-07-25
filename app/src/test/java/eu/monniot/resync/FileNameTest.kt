@@ -1,7 +1,5 @@
 package eu.monniot.resync
 
-import eu.monniot.resync.database.Document
-import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -11,7 +9,7 @@ class FileNameTest {
     @Test
     fun parse_wholeStory() {
         val actual = FileName.parse("My Story.epub")
-        val expected = Triple("My Story", null, null)
+        val expected = "My Story" to FileName.NoChapter
 
         assertEquals(expected, actual)
     }
@@ -19,7 +17,7 @@ class FileNameTest {
     @Test
     fun parse_oneChapterStory() {
         val actual = FileName.parse("My Story - Ch 1.epub")
-        val expected = Triple("My Story", 1, null)
+        val expected = "My Story" to FileName.OneChapter(1)
 
         assertEquals(expected, actual)
     }
@@ -27,7 +25,7 @@ class FileNameTest {
     @Test
     fun parse_multiChapterStory() {
         val actual = FileName.parse("My Story - Ch 2-4.epub")
-        val expected = Triple("My Story", 2, 4)
+        val expected = "My Story" to FileName.RangeChapter(2, 4)
 
         assertEquals(expected, actual)
     }

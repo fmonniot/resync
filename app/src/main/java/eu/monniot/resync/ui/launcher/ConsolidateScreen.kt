@@ -131,7 +131,8 @@ fun ConsolidateView(
                                 secondaryText = {
                                     // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
                                     // See also GroupedDocument data class
-                                    val text = doc.chapters.joinToString(",", prefix = "Ch ")
+                                    val text =
+                                        doc.chapters.joinToString { FileName.formatChapters(it) }
                                     Text(text)
                                 },
                                 modifier = Modifier.clickable {
@@ -173,9 +174,10 @@ fun DocumentBottomSheetView(document: GroupedDocument) {
 
     ListItem(
         text = {
-            Text(
-                text = "${document.chapters}"
-            )
+            val text =
+                document.chapters.joinToString { FileName.formatChapters(it, withPrefix = true) }
+
+            Text(text)
         },
         overlineText = {
             Text(
@@ -223,7 +225,8 @@ fun DocumentBottomSheetView(document: GroupedDocument) {
 @Preview
 @Composable
 fun DocumentBottomSheetViewPreview() {
-    val doc = GroupedDocument("Story B", listOf(1, 2, 4))
+    val doc =
+        GroupedDocument("Story B", listOf(FileName.RangeChapter(1, 2), FileName.OneChapter(4)))
     ReSyncTheme {
         DocumentBottomSheetView(doc)
     }
@@ -286,25 +289,21 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
                 .map {
                     if (it == null) null
                     else {
-                        val (name, firstCh, lastCh) = it
-
-                        if (firstCh == null) null
-                        else {
-
-                            val l = mutableListOf(firstCh)
-                            if (lastCh != null) {
-                                l.addAll((firstCh + 1)..lastCh)
-                            }
-
-                            Pair(name, l)
+                        // TODO Is that filter something we even want to keep ?
+                        when (it.second) {
+                            is FileName.NoChapter ->
+                                null
+                            is FileName.OneChapter ->
+                                it
+                            is FileName.RangeChapter ->
+                                it
                         }
-
                     }
                 }
                 .filterNotNull()
                 .groupBy(keySelector = { it.first }, valueTransform = { it.second })
                 .map {
-                    GroupedDocument(it.key, it.value.flatten().sorted())
+                    GroupedDocument(it.key, it.value)
                 }
                 .filter { it.chapters.size > 1 }
                 .toList()
@@ -321,9 +320,7 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     }
 }
 
-// TODO Change chapters representation, we want to keep range information
-// To know which one are already in a single file and aren't as important to consolidate
-data class GroupedDocument(val title: String, val chapters: List<Int>)
+data class GroupedDocument(val title: String, val chapters: List<FileName.Chapters>)
 
 @Preview
 @Composable
@@ -346,9 +343,9 @@ fun ConsolidateViewInitializedNoDocsPreview() {
 @Composable
 fun ConsolidateViewInitializedDocsPreview() {
     val docs = listOf(
-        GroupedDocument("Story A", listOf(1)),
-        GroupedDocument("Story B", listOf(1, 2, 4)),
-        GroupedDocument("Story C", listOf(2, 3))
+        GroupedDocument("Story A", listOf(FileName.OneChapter(1))),
+        GroupedDocument("Story B", listOf(FileName.RangeChapter(1, 2), FileName.OneChapter(4))),
+        GroupedDocument("Story C", listOf(FileName.RangeChapter(2, 3)))
     )
     ReSyncTheme {
         ConsolidateView(true, false, docs)

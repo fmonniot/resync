@@ -1,5 +1,6 @@
 package eu.monniot.resync.ui.launcher
 
+import eu.monniot.resync.FileName
 import eu.monniot.resync.database.Document
 import org.junit.Assert
 import org.junit.Test
@@ -18,7 +19,15 @@ class ConsolidateViewModelTest {
         )
 
         val expected = listOf(
-            GroupedDocument("My Life", (1..7).toList())
+            GroupedDocument(
+                "My Life", listOf(
+                    FileName.OneChapter(1),
+                    FileName.RangeChapter(2, 3),
+                    FileName.OneChapter(4),
+                    FileName.OneChapter(5),
+                    FileName.RangeChapter(6, 7),
+                )
+            )
         )
 
         Assert.assertEquals(expected, ConsolidateViewModel.group(docs))
