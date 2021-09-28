@@ -13,12 +13,14 @@ android {
             keyPassword 'android-signing-keystore-debug'
         }
     }
-    compileSdkVersion 30
 
     defaultConfig {
-        applicationId "eu.monniot.resync"
+        // minSdkVersion <= targetSdkVersion <= compileSdkVersion
         minSdkVersion 30
-        targetSdkVersion 30
+        targetSdkVersion 31
+        compileSdkVersion 31
+
+        applicationId "eu.monniot.resync"
         versionCode 1
         versionName "1.0"
 

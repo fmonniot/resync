@@ -14,8 +14,8 @@
         android:theme="@style/Theme.ReSync">
         <activity
             android:name=".LauncherActivity"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.ReSync.NoActionBar">
+            android:theme="@style/Theme.ReSync.NoActionBar"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -25,8 +25,8 @@
 
         <activity
             android:name=".DeepLinkActivity"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.ReSync.NoActionBar">
+            android:theme="@style/Theme.ReSync.NoActionBar"
+            android:exported="true">
 
             <tools:validation testUrl="https://www.fanfiction.net/s/13581651/36/How-to-get-engaged-to-Hermione-Granger" />
             <tools:validation testUrl="https://m.fanfiction.net/s/13673199/" />
