@@ -4,9 +4,9 @@ import android.annotation.SuppressLint
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import eu.monniot.resync.ui.Chapter
-import eu.monniot.resync.ui.ChapterNum
-import eu.monniot.resync.ui.StoryId
+import eu.monniot.resync.ui.downloader.Chapter
+import eu.monniot.resync.ui.downloader.StoryId
+import eu.monniot.resync.ui.downloader.ChapterId
 import kotlinx.coroutines.CompletableDeferred
 
 
@@ -14,13 +14,14 @@ abstract class Driver {
     private var view: WebView? = null
     private val ready = CompletableDeferred<Unit>()
 
-    abstract fun makeUrl(storyId: StoryId, chapterNum: ChapterNum): String
+    abstract fun makeUrl(storyId: StoryId, chapterId: ChapterId): String
 
     protected abstract val chapterTextScript: String
     protected abstract val storyNameScript: String
     protected abstract val authorNameScript: String
     protected abstract val chapterNameScript: String
     protected abstract val totalChaptersScript: String
+    protected abstract val chapterNumScript: String
 
     @SuppressLint("SetJavaScriptEnabled")
     fun installGrabber(view: WebView) {
@@ -34,10 +35,10 @@ abstract class Driver {
         this.ready.await()
     }
 
-    suspend fun readChapter(storyId: StoryId, chapterNum: ChapterNum): Chapter {
-        val jsInterface = JsInterface(chapterNum)
+    suspend fun readChapter(storyId: StoryId, chapterId: ChapterId): Chapter {
+        val jsInterface = JsInterface(storyId, chapterId)
         view?.addJavascriptInterface(jsInterface, "grabber")
-        view?.loadUrl(makeUrl(storyId, chapterNum))
+        view?.loadUrl(makeUrl(storyId, chapterId))
         return jsInterface.waitForChapter()
     }
 
@@ -51,13 +52,15 @@ abstract class Driver {
                 view?.loadUrl(authorNameScript)
                 view?.loadUrl(chapterNameScript)
                 view?.loadUrl(totalChaptersScript)
+                view?.loadUrl(chapterNumScript)
             }
         }
     }
 
     companion object {
         private class JsInterface(
-            private val chapterNum: ChapterNum
+            private val storyId: StoryId,
+            private val chapterId: ChapterId
         ) {
 
             private val chapterText = CompletableDeferred<String>()
@@ -65,10 +68,13 @@ abstract class Driver {
             private val storyName = CompletableDeferred<String>()
             private val authorName = CompletableDeferred<String>()
             private val totalChapters = CompletableDeferred<Int>()
+            private val chapterNum = CompletableDeferred<Int>()
 
             suspend fun waitForChapter(): Chapter {
                 return Chapter(
-                    chapterNum,
+                    storyId,
+                    chapterId,
+                    chapterNum.await(),
                     chapterName.await(),
                     storyName.await(),
                     authorName.await(),
@@ -130,10 +136,23 @@ abstract class Driver {
 
                 val n = html?.toIntOrNull()
                 if (n == null) {
-                    // One-chapter story don't have a valid html (it returns the author instead)
+                    // FF.Net: One-chapter story don't have a valid html (it returns the author instead)
                     totalChapters.complete(1)
                 } else {
                     totalChapters.complete(n)
+                }
+            }
+
+            @JavascriptInterface
+            fun onChapterNumber(html: String?) {
+                println("onChapterNumber: $html")
+
+                val n = html?.toIntOrNull()
+                if (n == null) {
+                    // FF.Net: url might not contains the number, in which case it's the first one
+                    chapterNum.complete(1)
+                } else {
+                    chapterNum.complete(n)
                 }
             }
         }
