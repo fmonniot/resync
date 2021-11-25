@@ -8,9 +8,13 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import eu.monniot.resync.downloader.ArchiveOfOurOwnDriver
+import eu.monniot.resync.downloader.DriverType
 import eu.monniot.resync.downloader.FanFictionNetDriver
 import kotlinx.coroutines.CompletableDeferred
 
+// TODO Move data classes out of the ui package
+// TODO Rename this file to GetChaptersView
 
 typealias StoryId = Int
 typealias ChapterNum = Int
@@ -43,12 +47,16 @@ sealed class ChapterSelection {
 // the https://m.fanfiction.net platform.
 @Composable
 fun GetChaptersView(
+    driverType: DriverType,
     storyId: StoryId,
     chapterSelection: ChapterSelection,
     c: CompletableDeferred<List<Chapter>>,
     currentChapterDownloading: MutableState<ChapterNum>? = null
 ) {
-    val driver = FanFictionNetDriver()
+    val driver = when (driverType) {
+        DriverType.ArchiveOfOurOwn -> ArchiveOfOurOwnDriver()
+        DriverType.FanFictionNet -> FanFictionNetDriver()
+    }
 
     LaunchedEffect(key1 = storyId) {
         println("Drawing GetChaptersView(storyId=$storyId, chapterSelection=$chapterSelection)")

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
+import eu.monniot.resync.downloader.DriverType
 import eu.monniot.resync.ui.ChapterSelection
 import eu.monniot.resync.ui.DownloadScreen
 import eu.monniot.resync.ui.ReSyncTheme
@@ -37,6 +38,7 @@ class DeepLinkActivity : AppCompatActivity() {
                 Surface(color = MaterialTheme.colors.background) {
 
                     DownloadScreen(
+                        driverType = DriverType.FanFictionNet,
                         storyId,
                         chapterSelection,
                         askConfirmation = true,

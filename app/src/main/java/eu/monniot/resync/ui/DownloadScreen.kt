@@ -12,6 +12,7 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eu.monniot.resync.FileName
+import eu.monniot.resync.downloader.DriverType
 import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.rmcloud.readTokens
@@ -19,8 +20,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 fun DownloadScreen(
+    driverType: DriverType,
     storyId: StoryId,
     chapterSelection: ChapterSelection,
     askConfirmation: Boolean,
@@ -32,6 +35,7 @@ fun DownloadScreen(
             mutableStateOf(
                 FetchFirstChapter(
                     onDone,
+                    driverType,
                     storyId,
                     chapterSelection,
                     askConfirmation,
@@ -49,6 +53,7 @@ fun DownloadScreen(
 // implementation details below: state machine for the download screen
 
 sealed class LinkCollectionState {
+    @ExperimentalCoroutinesApi
     @Composable
     abstract fun Screen(state: MutableState<LinkCollectionState>)
 }
@@ -69,6 +74,7 @@ fun LinkCollectionStatePreviewContainer(lcs: LinkCollectionState) {
 
 class FetchFirstChapter(
     private val onDone: () -> Unit,
+    private val driverType: DriverType,
     private val storyId: StoryId,
     private val chapterSelection: ChapterSelection,
     private val askConfirmation: Boolean,
@@ -100,7 +106,7 @@ class FetchFirstChapter(
             } else {
 
                 if (askConfirmation) {
-                    state.value = AskConfirmation(onDone, storyId, firstChapter)
+                    state.value = AskConfirmation(onDone, driverType, storyId, firstChapter)
                 } else {
                     // Automatic download
 
@@ -113,6 +119,7 @@ class FetchFirstChapter(
                         // More chapters needs to be downloaded
                         state.value = FetchAllChapters(
                             onDone,
+                            driverType,
                             storyId,
                             chapterSelection,
                             firstChapter.totalChapters
@@ -128,7 +135,7 @@ class FetchFirstChapter(
 
             // Hack to not render WebView in @Preview mode
             if (!noWebView) {
-                GetChaptersView(storyId, chapterSelection, deferred)
+                GetChaptersView(driverType, storyId, chapterSelection, deferred)
             }
 
             Column(
@@ -179,6 +186,7 @@ fun FetchFirstPreview() {
     LinkCollectionStatePreviewContainer(
         FetchFirstChapter(
             onDone = {},
+            driverType = DriverType.FanFictionNet,
             storyId = 1,
             chapterSelection = ChapterSelection.All,
             askConfirmation = true,
@@ -189,6 +197,7 @@ fun FetchFirstPreview() {
 
 class AskConfirmation(
     private val onDone: () -> Unit,
+    private val driverType: DriverType,
     private val storyId: StoryId,
     private val firstChapter: Chapter,
 ) : LinkCollectionState() {
@@ -309,6 +318,7 @@ class AskConfirmation(
                     if (firstChapter.totalChapters > 1) {
                         state.value = FetchAllChapters(
                             onDone,
+                            driverType,
                             storyId,
                             ChapterSelection.All,
                             firstChapter.totalChapters
@@ -328,7 +338,13 @@ class AskConfirmation(
                         )
                     } else {
                         state.value =
-                            FetchAllChapters(onDone, storyId, it, firstChapter.totalChapters)
+                            FetchAllChapters(
+                                onDone,
+                                driverType,
+                                storyId,
+                                it,
+                                firstChapter.totalChapters
+                            )
                     }
                 }
             )
@@ -347,7 +363,7 @@ fun AskConfirmationPreview() {
     val chapter =
         Chapter(1, "The Chapter Title", "The Story Name", "The Author", 42, "My super story. ")
     LinkCollectionStatePreviewContainer(
-        AskConfirmation({}, 42, chapter)
+        AskConfirmation({}, driverType = DriverType.FanFictionNet, 42, chapter)
     )
 }
 
@@ -359,7 +375,7 @@ fun AskConfirmationPreview() {
 fun AskConfirmationDetailsPreview() {
     val chapter =
         Chapter(1, "The Chapter Title", "The Story Name", "The Author", 42, "My super story. ")
-    val ask = AskConfirmation({}, 42, chapter)
+    val ask = AskConfirmation({}, driverType = DriverType.FanFictionNet, 42, chapter)
 
     ask.StoryDetails()
 }
@@ -372,7 +388,7 @@ fun AskConfirmationDetailsPreview() {
 fun AskConfirmationSyncPreview() {
     val chapter =
         Chapter(1, "The Chapter Title", "The Story Name", "The Author", 42, "My super story. ")
-    val ask = AskConfirmation({}, 42, chapter)
+    val ask = AskConfirmation({}, driverType = DriverType.FanFictionNet, 42, chapter)
 
     ask.SyncChoice(onStorySelected = {}, onChapterSelected = {})
 }
@@ -380,6 +396,7 @@ fun AskConfirmationSyncPreview() {
 
 class FetchAllChapters(
     private val onDone: () -> Unit,
+    private val driverType: DriverType,
     private val storyId: StoryId,
     private val chapterSelection: ChapterSelection,
     private val totalChapters: Int,
@@ -389,7 +406,6 @@ class FetchAllChapters(
 
     // TODO Extract effect into a dedicated non @Composable function
 
-    @ExperimentalCoroutinesApi
     @Composable
     override fun Screen(state: MutableState<LinkCollectionState>) {
         println("FetchAllChapters(storyId=$storyId, chapterSelection=$chapterSelection)")
@@ -408,7 +424,13 @@ class FetchAllChapters(
         Column {
             // Hack to not render WebView in @Preview mode
             if (!noWebView) {
-                GetChaptersView(storyId, chapterSelection, deferred, currentChapterDlState)
+                GetChaptersView(
+                    driverType,
+                    storyId,
+                    chapterSelection,
+                    deferred,
+                    currentChapterDlState
+                )
             }
 
             Column(
@@ -465,6 +487,7 @@ fun FetchAllChaptersPreview() {
     LinkCollectionStatePreviewContainer(
         FetchAllChapters(
             onDone = {},
+            driverType = DriverType.ArchiveOfOurOwn,
             storyId = 1,
             chapterSelection = ChapterSelection.All,
             totalChapters = 4,
