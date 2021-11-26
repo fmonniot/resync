@@ -1,5 +1,6 @@
 package eu.monniot.resync.downloader
 
+import eu.monniot.resync.ui.downloader.Chapter
 import eu.monniot.resync.ui.downloader.ChapterId
 import eu.monniot.resync.ui.downloader.StoryId
 
@@ -10,6 +11,10 @@ class ArchiveOfOurOwnDriver : Driver() {
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
         "https://archiveofourown.org/works/${storyId}/chapters/${chapterId}?view_adult=true"
 
+    override fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter {
+        TODO("Not yet implemented")
+    }
+
     private val scriptText =
         "javascript:window.grabber.%s(document.querySelector('%s').innerText);"
 
@@ -19,16 +24,16 @@ class ArchiveOfOurOwnDriver : Driver() {
     private val scriptChapter =
         "javascript:window.grabber.%s(document.querySelector('.work.meta.group dd.chapters').innerText.split('/')[%s]);"
 
-    override val chapterTextScript: String
+    val chapterTextScript: String
         get() = scriptHtml.format("onChapterText", "#chapters")
-    override val storyNameScript: String
+    val storyNameScript: String
         get() = scriptText.format("onStoryName", ".title.heading")
-    override val authorNameScript: String
+    val authorNameScript: String
         get() = scriptText.format("onAuthorName", ".byline.heading")
-    override val chapterNameScript: String
+    val chapterNameScript: String
         get() = scriptText.format("onAuthorName", ".chapter.preface.group > .title")
-    override val totalChaptersScript: String
+    val totalChaptersScript: String
         get() = scriptChapter.format("onTotalChapters", "1")
-    override val chapterNumScript: String
+    val chapterNumScript: String
         get() = scriptChapter.format("onChapterNumber", "0")
 }

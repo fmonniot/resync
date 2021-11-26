@@ -1,59 +1,60 @@
 package eu.monniot.resync.downloader
 
+import eu.monniot.resync.ui.downloader.Chapter
 import eu.monniot.resync.ui.downloader.ChapterId
 import eu.monniot.resync.ui.downloader.StoryId
+import org.jsoup.Jsoup
 
 class FanFictionNetDriver : Driver() {
 
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
         "https://m.fanfiction.net/s/${storyId}/${chapterId}"
 
-    private val scriptText =
-        "javascript:window.grabber.%s(document.querySelector('%s').innerText);"
+    override fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter {
+        val document = Jsoup.parse(source)
 
-    private val scriptHtml =
-        "javascript:window.grabber.%s(new XMLSerializer().serializeToString(document.querySelector('%s')));"
-    private val scriptChapterName =
-        "javascript:window.grabber.onChapterName((Array.apply([], document.querySelector('#content').childNodes || []).filter(n => n.nodeType === 3).pop() || {}).textContent);"
-
-    /* Un-minimized javascript
-
-        function re(acc, current) {
-            const [done, previous] = acc;
-
-            if (done) {
-                return [true, previous]
-            } else {
-                if (current.text === "Next »" || current.text === " Review") {
-                    return [true, previous]
-                } else {
-                    return [false, current]
-                }
-            }
+        val extractText = { selector: String ->
+            document.select(selector).first()!!.text().replace("\\n", "").trim()
         }
 
-        window.grabber.onTotalChapters(
-            Array.apply([], document.querySelectorAll('#top div[align] a'))
-                .reduce(re, [false, null])[1]
-                .textContent
+        val content = document.select(".storycontent").first()!!.html()
+        val storyName = extractText("#content > div > b")
+        val authorName = extractText("#content > div > a")
+
+        val chapterName =
+            document.select("#content").textNodes().last().text()
+                .replace("\\n", "").trim()
+                .ifBlank { null }
+
+        // FanFiction.Net uses chapter numbers as id, so we can use this to our advantage here
+        val chapterNumber = chapterId.id
+
+        // Total chapters
+        // Unfortunately ff.net doesn't have great structure, so we have to look at a lot of links.
+        // We then filter them their reference value: if they starts with the page url then its a
+        // navigation link (and if they don't we don't really care about them).
+        // Navigation links also includes some helpers (first, prev, next, review) that we remove
+        // by checking if the link text is a number or not.
+        // Note that it is highly likely that the total chapter is the only one containing a number
+        // only, but we put the href check just to be one the safe side.
+        val totalChapters =
+            document.select("#top div[align] a")
+                .firstOrNull {
+                    it.attr("href").startsWith("/s/${storyId.id}") &&
+                            it.text().toIntOrNull() != null
+                }
+                ?.text()?.toInt()
+                ?: 1
+
+        return Chapter(
+            storyId,
+            chapterId,
+            chapterNumber,
+            chapterName,
+            storyName,
+            authorName,
+            totalChapters,
+            content
         )
-    */
-    private val scriptTotalChapters =
-        "javascript:function re(e,t){const[n,o]=e;return console.log(t.text),n?[!0,o]:\"Next »\"===t.text||\" Review\"===t.text?[!0,o]:[!1,t]}window.grabber.onTotalChapters(Array.apply([],document.querySelectorAll(\"#top div[align] a\")).reduce(re,[!1,null])[1].textContent);"
-
-    private val scriptChapterNumber =
-        "javascript:window.grabber.onChapterNumber(document.location.pathname.split('/')[3]);"
-
-    override val chapterTextScript: String
-        get() = scriptHtml.format("onChapterText", ".storycontent")
-    override val storyNameScript: String
-        get() = scriptText.format("onStoryName", "#content > div > b")
-    override val authorNameScript: String
-        get() = scriptText.format("onAuthorName", "#content > div > a")
-    override val chapterNameScript: String
-        get() = scriptChapterName
-    override val totalChaptersScript: String
-        get() = scriptTotalChapters
-    override val chapterNumScript: String
-        get() = scriptChapterNumber
+    }
 }

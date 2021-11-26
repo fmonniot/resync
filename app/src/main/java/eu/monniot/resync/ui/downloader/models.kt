@@ -1,10 +1,10 @@
 package eu.monniot.resync.ui.downloader
 
 @JvmInline
-value class StoryId(private val id: Int)
+value class StoryId(val id: Int)
 
 @JvmInline
-value class ChapterId(private val id: Int)
+value class ChapterId(val id: Int)
 
 data class Chapter(
     val storyId: StoryId,
