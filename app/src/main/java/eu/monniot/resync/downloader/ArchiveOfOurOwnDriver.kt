@@ -3,15 +3,23 @@ package eu.monniot.resync.downloader
 import eu.monniot.resync.ui.downloader.Chapter
 import eu.monniot.resync.ui.downloader.ChapterId
 import eu.monniot.resync.ui.downloader.StoryId
+import org.jsoup.Jsoup
 
 class ArchiveOfOurOwnDriver : Driver() {
-    // Note that for AO3, we need a chapter Id and not num in the url
-    // TODO Introduce a ChapterId data class with both number and id in it
-    // For FF.Net it's gonna be the same, for AO3 it's different
+
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
-        "https://archiveofourown.org/works/${storyId}/chapters/${chapterId}?view_adult=true"
+        if (chapterId.id == null) {
+            "https://archiveofourown.org/works/${storyId.id}?view_adult=true"
+        } else {
+            "https://archiveofourown.org/works/${storyId.id}/chapters/${chapterId.id}?view_adult=true"
+        }
 
     override fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter {
+        @Suppress("UNUSED_VARIABLE") val document = Jsoup.parse(source)
+
+        // knownChapters:
+        // Array.apply([], document.querySelectorAll('#chapter_index option')).map((el, i) => [el.value, i])
+
         TODO("Not yet implemented")
     }
 

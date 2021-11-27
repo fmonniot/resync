@@ -8,7 +8,7 @@ import org.jsoup.Jsoup
 class FanFictionNetDriver : Driver() {
 
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
-        "https://m.fanfiction.net/s/${storyId}/${chapterId}"
+        "https://m.fanfiction.net/s/${storyId.id}/${chapterId.id ?: 1}"
 
     override fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter {
         val document = Jsoup.parse(source)
@@ -27,7 +27,7 @@ class FanFictionNetDriver : Driver() {
                 .ifBlank { null }
 
         // FanFiction.Net uses chapter numbers as id, so we can use this to our advantage here
-        val chapterNumber = chapterId.id
+        val chapterNumber = chapterId.id ?: 1
 
         // Total chapters
         // Unfortunately ff.net doesn't have great structure, so we have to look at a lot of links.
@@ -46,9 +46,13 @@ class FanFictionNetDriver : Driver() {
                 ?.text()?.toInt()
                 ?: 1
 
+        val nextChapterId =
+            if (chapterNumber < totalChapters) ChapterId(chapterNumber + 1) else null
+
         return Chapter(
             storyId,
             chapterId,
+            nextChapterId,
             chapterNumber,
             chapterName,
             storyName,
