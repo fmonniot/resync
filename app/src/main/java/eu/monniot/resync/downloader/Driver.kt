@@ -4,9 +4,6 @@ import android.annotation.SuppressLint
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import eu.monniot.resync.ui.downloader.Chapter
-import eu.monniot.resync.ui.downloader.StoryId
-import eu.monniot.resync.ui.downloader.ChapterId
 import kotlinx.coroutines.CompletableDeferred
 
 // Because of its reliance of a WebView, the Driver should be in the same

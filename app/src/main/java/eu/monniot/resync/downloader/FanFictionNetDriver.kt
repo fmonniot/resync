@@ -1,8 +1,5 @@
 package eu.monniot.resync.downloader
 
-import eu.monniot.resync.ui.downloader.Chapter
-import eu.monniot.resync.ui.downloader.ChapterId
-import eu.monniot.resync.ui.downloader.StoryId
 import org.jsoup.Jsoup
 
 class FanFictionNetDriver : Driver() {

@@ -16,6 +16,8 @@ import eu.monniot.resync.downloader.ArchiveOfOurOwnDriver
 import eu.monniot.resync.downloader.Driver
 import eu.monniot.resync.downloader.DriverType
 import eu.monniot.resync.downloader.FanFictionNetDriver
+import eu.monniot.resync.downloader.ChapterId
+import eu.monniot.resync.downloader.StoryId
 import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.rmcloud.readTokens
