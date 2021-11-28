@@ -14,31 +14,49 @@ class ArchiveOfOurOwnDriver : Driver() {
     override fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter {
         @Suppress("UNUSED_VARIABLE") val document = Jsoup.parse(source)
 
-        // knownChapters:
-        // Array.apply([], document.querySelectorAll('#chapter_index option')).map((el, i) => [el.value, i])
+        val index = document
+            .select("#chapter_index option")
+            .mapIndexed { i, el -> (i + 1) to ChapterId(el.attr("value").toInt()) }
+            .toMap()
 
-        TODO("Not yet implemented")
+        // first number is published total, second number is planned total
+        // We are only interested in the first one, as we want to know what
+        // we can fetch. Non-published works isn't available :)
+        val (totalPublishedChapters, _) = document.select(".work.meta.group dd.chapters")
+            .text()
+            .superTrim()
+            .split("/")
+            .map { it.toInt() }
+
+        val storyName = document.select("h2.title").text().superTrim()
+        val authorName = document.select("h3.byline.heading").text().superTrim()
+
+        val chapterNumber =
+            document.select("#chapters .title a").text()
+                .ifBlank { null }
+                ?.replace("Chapter ", "")?.toInt()
+                ?: 1
+
+        val chapterName = document
+            .select("#chapters .title")
+            .textNodes().lastOrNull()
+            ?.text()?.substring(1)?.superTrim()
+
+        val content = document.select("#chapters .userstuff").html()
+
+        return Chapter(
+            storyId,
+            chapterId,
+            index,
+            chapterNumber,
+            chapterName,
+            storyName,
+            authorName,
+            totalPublishedChapters,
+            content
+        )
     }
 
-    private val scriptText =
-        "javascript:window.grabber.%s(document.querySelector('%s').innerText);"
-
-    private val scriptHtml =
-        "javascript:window.grabber.%s(new XMLSerializer().serializeToString(document.querySelector('%s')));"
-
-    private val scriptChapter =
-        "javascript:window.grabber.%s(document.querySelector('.work.meta.group dd.chapters').innerText.split('/')[%s]);"
-
-    val chapterTextScript: String
-        get() = scriptHtml.format("onChapterText", "#chapters")
-    val storyNameScript: String
-        get() = scriptText.format("onStoryName", ".title.heading")
-    val authorNameScript: String
-        get() = scriptText.format("onAuthorName", ".byline.heading")
-    val chapterNameScript: String
-        get() = scriptText.format("onAuthorName", ".chapter.preface.group > .title")
-    val totalChaptersScript: String
-        get() = scriptChapter.format("onTotalChapters", "1")
-    val chapterNumScript: String
-        get() = scriptChapter.format("onChapterNumber", "0")
+    private fun String.superTrim(): String =
+        this.replace("\\n", "").trim()
 }

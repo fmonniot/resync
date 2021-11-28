@@ -43,13 +43,14 @@ class FanFictionNetDriver : Driver() {
                 ?.text()?.toInt()
                 ?: 1
 
-        val nextChapterId =
-            if (chapterNumber < totalChapters) ChapterId(chapterNumber + 1) else null
+        // FF.Net uses numbers as indices, so we can cheat a bit and build the index
+        // based on that rule.
+        val index = (1..totalChapters).associateWith { ChapterId(it) }
 
         return Chapter(
             storyId,
             chapterId,
-            nextChapterId,
+            index,
             chapterNumber,
             chapterName,
             storyName,

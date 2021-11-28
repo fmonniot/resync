@@ -113,7 +113,7 @@ suspend fun downloadLogic(
 
     // initial state is FetchingFirstChapter, no need to re-set it here
     val initialChapter = driver.readChapter(storyId, chapterId)
-    val knownChapters: Map<Int, ChapterId> = emptyMap() // TODO initialChapter.knownChapters
+    val knownChapters = initialChapter.chapterIndex
 
     val chaptersInEpub = mutableListOf(initialChapter)
     var wholeStory = true
@@ -226,11 +226,13 @@ suspend fun downloadLogic(
     chaptersInEpub.sortBy { it.num }
 
     // TODO Change makeEpub (or create a temporary alternative) to accept new Chapter class
-    // The current code does not work and is just a quick compiler fix to let me make
-    // progress on the rest of this function
-    @Suppress("UNCHECKED_CAST") val epub =
-        makeEpub(chaptersInEpub as List<eu.monniot.resync.ui.Chapter>)
+    /*
+    val epub = makeEpub(chaptersInEpub)
     val fileName = FileName.make(chaptersInEpub, wholeStory)
+
+    // TODO Inject tokens as parameters
+    // Which means we will be able to test this function as unit test
+    // without mocking the android framework
     val tokens = readTokens(context)
 
     if (tokens == null) {
@@ -240,6 +242,7 @@ suspend fun downloadLogic(
         val rmCloud = RmClient(tokens)
         rmCloud.uploadEpub(fileName, epub)
     }
+     */
 
     setState(DownloadState.Done)
 

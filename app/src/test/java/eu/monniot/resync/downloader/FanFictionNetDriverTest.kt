@@ -1,8 +1,5 @@
 package eu.monniot.resync.downloader
 
-import eu.monniot.resync.ui.downloader.Chapter
-import eu.monniot.resync.ui.downloader.ChapterId
-import eu.monniot.resync.ui.downloader.StoryId
 import org.junit.Assert
 import org.junit.Test
 
@@ -14,6 +11,11 @@ class FanFictionNetDriverTest {
 
     private val driver = FanFictionNetDriver()
 
+    private val index1Chapter = mapOf(1 to ChapterId(1))
+    private val index2Chapters = (1..2).associateWith { ChapterId(it) }
+    private val index16Chapters = (1..16).associateWith { ChapterId(it) }
+    private val index24Chapters = (1..24).associateWith { ChapterId(it) }
+
     @Test
     fun parse_multiChapterStory_firstChapter() {
         val html = getResourceAsText("3384712")
@@ -21,7 +23,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(3384712),
             ChapterId(1),
-            ChapterId(2),
+            index24Chapters,
             1,
             "Chapter 1: A House of Cards",
             "The Lie I've Lived",
@@ -40,7 +42,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(3384712),
             ChapterId(23),
-            ChapterId(24),
+            index24Chapters,
             23,
             "Chapter 23: Humiliation and Other Diversionary",
             "The Lie I've Lived",
@@ -59,7 +61,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(3384712),
             ChapterId(24),
-            null,
+            index24Chapters,
             24,
             "Chapter 24: Cry Havoc",
             "The Lie I've Lived",
@@ -79,7 +81,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(13992705),
             ChapterId(1),
-            ChapterId(2),
+            index2Chapters,
             1,
             "Chapter 1: Prologo",
             "Yo Soy La Otra",
@@ -98,7 +100,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(13992705),
             ChapterId(2),
-            null,
+            index2Chapters,
             2,
             "Chapter 1: Decisiones",
             "Yo Soy La Otra",
@@ -118,7 +120,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(13995110),
             ChapterId(1),
-            null,
+            index1Chapter,
             1,
             null,
             "More Than Satisfactory",
@@ -138,7 +140,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(9157763),
             ChapterId(3),
-            ChapterId(4),
+            index16Chapters,
             3,
             "Chapter 3 - In the Middle of the Night",
             "All Was Well",
@@ -157,7 +159,7 @@ class FanFictionNetDriverTest {
         val expected = Chapter(
             StoryId(13846282),
             ChapterId(1),
-            null,
+            index1Chapter,
             1,
             null,
             "A Surprise Visitor",
