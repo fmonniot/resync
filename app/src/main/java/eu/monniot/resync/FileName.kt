@@ -1,6 +1,7 @@
 package eu.monniot.resync
 
-import eu.monniot.resync.ui.Chapter
+import eu.monniot.resync.downloader.Chapter
+
 
 object FileName {
 

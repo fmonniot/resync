@@ -1,8 +1,7 @@
 package eu.monniot.resync
 
 import android.text.TextUtils
-import eu.monniot.resync.ui.Chapter
-import eu.monniot.resync.ui.ChapterNum
+import eu.monniot.resync.downloader.Chapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import nl.siegmann.epublib.domain.Author
@@ -31,7 +30,8 @@ suspend fun makeEpub(chapterList: List<Chapter>): ByteArray {
     book.metadata.addTitle(firstChapter.storyName)
     book.addCover(
         firstChapter,
-        sortedChapters.first().num to sortedChapters.last().num
+        sortedChapters.first().num,
+        sortedChapters.last().num
     )
 
     // Insert the first chapter
@@ -77,13 +77,12 @@ ${chapter.content.replace("xmlns=\"http://www.w3.org/1999/xhtml\"", "")}
 // Emitting as a PDF would make us loose the typo/size choice on the tablet.
 // So we keep the layout for now and hope that the reader will be able to decode those in the future
 // (even though I highly doubt that will be the case).
-fun Book.addCover(chapter: Chapter, range: Pair<ChapterNum, ChapterNum>) {
-    val (first, last) = range
+fun Book.addCover(chapter: Chapter, firstChapterNumber: Int, lastChapterNumber: Int) {
 
     val subTitle = when {
-        first == last && chapter.chapterName != null -> chapter.chapterName
-        first == last -> ""
-        else -> "Chapters $first to $last"
+        firstChapterNumber == lastChapterNumber && chapter.chapterName != null -> chapter.chapterName
+        firstChapterNumber == lastChapterNumber -> ""
+        else -> "Chapters $firstChapterNumber to $lastChapterNumber"
     }
 
     val content = """<?xml version="1.0" encoding="UTF-8"?>

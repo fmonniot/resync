@@ -32,18 +32,9 @@
             <tools:validation testUrl="https://m.fanfiction.net/s/13673199/" />
             <tools:validation testUrl="https://m.fanfiction.net/s/13673199/1/" />
             <tools:validation testUrl="https://m.fanfiction.net/s/13673199/2/" />
+            <tools:validation testUrl="https://archiveofourown.org/works/34804678/chapters/86665087" />
+            <tools:validation testUrl="https://archiveofourown.org/works/34804678" />
 
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:scheme="https"
-                    android:host="m.fanfiction.net"
-                    android:pathPrefix="/s" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -54,6 +45,16 @@
                     android:scheme="https"
                     android:host="www.fanfiction.net"
                     android:pathPrefix="/s" />
+
+                <data
+                    android:scheme="https"
+                    android:host="m.fanfiction.net"
+                    android:pathPrefix="/s" />
+
+                <data
+                    android:scheme="https"
+                    android:host="archiveofourown.org"
+                    android:pathPrefix="/works" />
             </intent-filter>
         </activity>
 

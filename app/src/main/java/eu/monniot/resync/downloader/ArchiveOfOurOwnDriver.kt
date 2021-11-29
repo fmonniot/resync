@@ -12,7 +12,7 @@ class ArchiveOfOurOwnDriver : Driver() {
         }
 
     override fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter {
-        @Suppress("UNUSED_VARIABLE") val document = Jsoup.parse(source)
+        val document = Jsoup.parse(source)
 
         val index = document
             .select("#chapter_index option")

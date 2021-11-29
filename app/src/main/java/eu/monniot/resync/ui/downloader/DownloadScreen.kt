@@ -226,7 +226,6 @@ suspend fun downloadLogic(
     chaptersInEpub.sortBy { it.num }
 
     // TODO Change makeEpub (or create a temporary alternative) to accept new Chapter class
-    /*
     val epub = makeEpub(chaptersInEpub)
     val fileName = FileName.make(chaptersInEpub, wholeStory)
 
@@ -242,7 +241,6 @@ suspend fun downloadLogic(
         val rmCloud = RmClient(tokens)
         rmCloud.uploadEpub(fileName, epub)
     }
-     */
 
     setState(DownloadState.Done)
 
