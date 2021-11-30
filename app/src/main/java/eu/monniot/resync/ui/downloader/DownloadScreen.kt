@@ -12,12 +12,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import eu.monniot.resync.FileName
-import eu.monniot.resync.downloader.ArchiveOfOurOwnDriver
-import eu.monniot.resync.downloader.Driver
-import eu.monniot.resync.downloader.DriverType
-import eu.monniot.resync.downloader.FanFictionNetDriver
-import eu.monniot.resync.downloader.ChapterId
-import eu.monniot.resync.downloader.StoryId
+import eu.monniot.resync.downloader.*
 import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.rmcloud.readTokens
@@ -87,6 +82,7 @@ fun DownloadScreen(
             is DownloadState.DownloadingRemainingChapters -> DownloadingRemainingChapters(
                 currentlyDownloading = state.currentlyDownloading,
                 totalToDownloads = state.totalToDownloads,
+                notice = state.notice,
             )
             DownloadState.BuildingAndUploading -> Text("Uploading to the reMarkable Cloud")
             DownloadState.Done -> Text("The story is now available on your tablet")
@@ -161,9 +157,13 @@ suspend fun downloadLogic(
                 } else {
                     // The id have to exists, because the selection is constrained
                     // within the known/existing chapters.
-                    setState(DownloadState.DownloadingRemainingChapters(1, 1))
+                    setState(DownloadState.DownloadingRemainingChapters(1, 1, null))
                     val id = knownChapters[chapterSelection.chapter]!!
-                    val chapter = driver.readChapter(storyId, id)
+
+                    val chapter = readWithRateLimit(
+                        { driver.readChapter(storyId, id) },
+                        { setState(DownloadState.DownloadingRemainingChapters(1, 1, it)) }
+                    )
 
                     // The user only want the selected chapter, remove the initial one
                     chaptersInEpub.clear()
@@ -174,11 +174,12 @@ suspend fun downloadLogic(
             ChapterSelection.All -> {
                 // The user wants everything, let's iterate over the known chapters
 
-                val setDlState = { index: Int ->
+                val setDlState = { index: Int, notice: String? ->
                     setState(
                         DownloadState.DownloadingRemainingChapters(
                             index,
-                            initialChapter.totalChapters - 1
+                            initialChapter.totalChapters - 1,
+                            notice,
                         )
                     )
                 }
@@ -188,31 +189,63 @@ suspend fun downloadLogic(
                     .filter { it != initialChapter.chapterId }
                     .forEachIndexed { index, id ->
                         // TODO Check if the index is correctly aligned (0 or 1)
-                        setDlState(index)
+                        setDlState(index, null)
 
-                        val chapter = driver.readChapter(storyId, id)
+                        // Let's see if we can bypass the RL. Don't do it in prod though.
+                        // It should only be a last resort thing (mainly for dev)
+                        driver.cleanAll()
+
+                        // TODO Investigate if storing chapters on disk is a good idea or not
+                        // Mostly because with AO3's RL dl a story can now take a long time,
+                        // increasing the risk of loosing work/time.
+
+                        // AO3 has a vague definition of what they consider normal usage.
+                        // Let's wait 5 seconds between each chapter. It's more or less like
+                        // a human going over each chapter and checking the first sentence.
+                        if (driverType == DriverType.ArchiveOfOurOwn) {
+                            delay(1000)
+                        }
+
+                        val chapter = readWithRateLimit(
+                            { driver.readChapter(storyId, id) },
+                            { setDlState(index, it) }
+                        )
+
                         chaptersInEpub.add(chapter)
 
                     }
             }
+
             is ChapterSelection.Range -> {
                 val toDownload = knownChapters
                     .filter { (num, id) -> chapterSelection.contains(num) && initialChapter.chapterId != id }
 
-                val setDlState = { index: Int ->
+                val setDlState = { index: Int, notice: String? ->
                     setState(
                         DownloadState.DownloadingRemainingChapters(
                             index,
-                            toDownload.size
+                            toDownload.size,
+                            notice
                         )
                     )
                 }
 
                 toDownload.values.forEachIndexed { index, id ->
                     // TODO Check if the index is correctly aligned (0 or 1)
-                    setDlState(index)
+                    setDlState(index, null)
 
-                    val chapter = driver.readChapter(storyId, id)
+                    // AO3 has a vague definition of what they consider normal usage.
+                    // Let's wait 5 seconds between each chapter. It's more or less like
+                    // a human going over each chapter and checking the first sentence.
+                    if (driverType == DriverType.ArchiveOfOurOwn) {
+                        delay(1000)
+                    }
+
+                    val chapter = readWithRateLimit(
+                        { driver.readChapter(storyId, id) },
+                        { setDlState(index, it) }
+                    )
+
                     chaptersInEpub.add(chapter)
                 }
             }
@@ -249,6 +282,37 @@ suspend fun downloadLogic(
     delay(1500)
 }
 
+private suspend fun readWithRateLimit(
+    read: suspend () -> Chapter,
+    updateState: (String) -> Unit,
+    maxRetry: Int = 10, // try for 10 minutes to know the limit
+): Chapter {
+    for (i in 1..maxRetry) {
+        try {
+            return read()
+        } catch (e: Driver.Companion.RateLimited) {
+            // Wait 90 seconds before trying again
+            for (time in 60 downTo 1) {
+                updateState(ao3RLNotice(i, time))
+                delay(1000)
+            }
+        }
+    }
+
+    // If we reached this point, then we couldn't read the chapter even after retries
+    // Let's throw the exception and bubble up (TODO Or do better ?)
+    throw Driver.Companion.RateLimited
+}
+
+private fun ao3RLNotice(limitHit: Int, remainingSeconds: Int): String {
+    val n = when (limitHit) {
+        1 -> "once"
+        2 -> "twice"
+        else -> "$limitHit times"
+    }
+
+    return "AO3 rate limit hit ($n)\nWaiting $remainingSeconds second${if (remainingSeconds > 1) "s" else ""} before resuming download."
+}
 sealed interface DownloadState {
     data class FetchingFirstChapter(
         val storyId: StoryId,
@@ -268,6 +332,7 @@ sealed interface DownloadState {
     data class DownloadingRemainingChapters(
         val currentlyDownloading: Int,
         val totalToDownloads: Int,
+        val notice: String?,
     ) : DownloadState
 
     object BuildingAndUploading : DownloadState
@@ -428,7 +493,8 @@ fun ConfirmChapters(
 @Composable
 fun DownloadingRemainingChapters(
     currentlyDownloading: Int,
-    totalToDownloads: Int
+    totalToDownloads: Int,
+    notice: String?,
 ) {
     Column(
         verticalArrangement = Arrangement.Center,
@@ -441,16 +507,14 @@ fun DownloadingRemainingChapters(
         Text(
             text = "Fetching Story",
             style = MaterialTheme.typography.h6,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Box(
             modifier = Modifier
                 .width(100.dp)
-                .height(100.dp)
-                .align(Alignment.CenterHorizontally),
+                .height(100.dp),
             contentAlignment = Alignment.Center
         ) {
 
@@ -458,14 +522,27 @@ fun DownloadingRemainingChapters(
             // Currently it's a bit strange when getting, say, the last 5 chapters
             // as the wheel's progression will start at the end.
             // eg. start at 45 and end ta 50, progression is from 90 to 100%.
+            // Use the preview tool to understand what bounds we need, then create
+            // value classes to enforce 0-indexed or 1-indexed value. Maybe.
             CircularProgressIndicator(
                 progress = currentlyDownloading.toFloat() / totalToDownloads,
                 modifier = Modifier
                     .fillMaxSize()
             )
             Text(
-                text = "$currentlyDownloading/${totalToDownloads} chapters",
+                text = "$currentlyDownloading/${totalToDownloads}\nchapters",
                 style = MaterialTheme.typography.body2,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        if (notice != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = notice,
+                style = MaterialTheme.typography.body2,
+                textAlign = TextAlign.Center,
             )
         }
 

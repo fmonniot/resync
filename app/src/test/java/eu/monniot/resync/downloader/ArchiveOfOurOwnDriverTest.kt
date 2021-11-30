@@ -63,4 +63,17 @@ class ArchiveOfOurOwnDriverTest {
         Assert.assertEquals(expected, actual)
     }
 
+    @Test
+    fun parse_retryLater_throwsException() {
+        val html = getResourceAsText("retry-later")
+
+        Assert.assertThrows(Driver.Companion.RateLimited::class.java) {
+            driver.parseWebPage(
+                html,
+                StoryId(35336083),
+                ChapterId(null)
+            )
+        }
+    }
+
 }

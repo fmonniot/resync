@@ -1,6 +1,7 @@
 package eu.monniot.resync.downloader
 
 import android.annotation.SuppressLint
+import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -31,6 +32,13 @@ abstract class Driver {
         this.ready.await()
     }
 
+    fun cleanAll() {
+        CookieManager.getInstance().removeAllCookies(null)
+        CookieManager.getInstance().flush()
+        view?.clearCache(true);
+        view?.clearHistory();
+    }
+
     suspend fun readChapter(storyId: StoryId, chapterId: ChapterId): Chapter {
         val jsInterface = JsInterface()
         view?.addJavascriptInterface(jsInterface, "grabber")
@@ -53,6 +61,8 @@ abstract class Driver {
     }
 
     companion object {
+        object RateLimited : RuntimeException()
+
         private class JsInterface {
 
             private val chapterText = CompletableDeferred<String>()
