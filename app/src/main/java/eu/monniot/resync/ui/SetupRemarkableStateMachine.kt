@@ -122,7 +122,7 @@ private sealed class SetupRemarkableStateMachine {
                     )
                 }
 
-                if(invalidCode) {
+                if (invalidCode) {
                     Text(
                         "The code entered previously was invalid. Please try again",
                         textAlign = TextAlign.Center,
@@ -175,7 +175,9 @@ private sealed class SetupRemarkableStateMachine {
         @Composable
         override fun View(state: MutableState<SetupRemarkableStateMachine>) {
             Column(
-                modifier = Modifier.padding(16.dp, 32.dp).fillMaxHeight(),
+                modifier = Modifier
+                    .padding(16.dp, 32.dp)
+                    .fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
 

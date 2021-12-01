@@ -37,15 +37,12 @@ class DeepLinkActivityTest {
         )
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun parsePath_ffnet_invalid() {
-        Assert.assertEquals(
-            Triple(StoryId(3384712), ChapterId(null), DriverType.FanFictionNet),
+        Assert.assertThrows(IllegalArgumentException::class.java) {
             DeepLinkActivity.parsePath(Uri.parse("https://m.fanfiction.net/s/"))
-        )
+        }
     }
-
-    //
 
     @Test
     fun parsePath_ao3_withoutChapter() {

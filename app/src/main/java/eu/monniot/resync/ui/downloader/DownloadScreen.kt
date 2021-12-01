@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import eu.monniot.resync.FileName
@@ -24,7 +25,6 @@ fun DownloadScreen(
     driverType: DriverType,
     storyId: StoryId,
     chapterId: ChapterId,
-    noWebView: Boolean = false,
     onDone: () -> Unit
 ) {
     val context = LocalContext.current
@@ -56,14 +56,11 @@ fun DownloadScreen(
 
     Box {
 
-        // Hack to not render WebView in @Preview mode and avoid crashes
-        if (!noWebView) {
-            // We need a web view to grab some fiction content.
-            // This is mainly to go around the CloudFlare protection that FF.Net have.
-            // By using a web view, we are seen as "normal" web traffic.
-            AndroidView(factory = ::WebView, modifier = Modifier.size(1.dp, 1.dp)) { webView ->
-                driver.installGrabber(webView)
-            }
+        // We need a web view to grab some fiction content.
+        // This is mainly to go around the CloudFlare protection that FF.Net have.
+        // By using a web view, we are seen as "normal" web traffic.
+        AndroidView(factory = ::WebView, modifier = Modifier.size(1.dp, 1.dp)) { webView ->
+            driver.installGrabber(webView)
         }
 
         when (state) {
@@ -212,7 +209,6 @@ suspend fun downloadLogic(
                         )
 
                         chaptersInEpub.add(chapter)
-
                     }
             }
 
@@ -313,6 +309,7 @@ private fun ao3RLNotice(limitHit: Int, remainingSeconds: Int): String {
 
     return "AO3 rate limit hit ($n)\nWaiting $remainingSeconds second${if (remainingSeconds > 1) "s" else ""} before resuming download."
 }
+
 sealed interface DownloadState {
     data class FetchingFirstChapter(
         val storyId: StoryId,

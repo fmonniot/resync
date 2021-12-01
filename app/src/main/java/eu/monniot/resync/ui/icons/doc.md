@@ -1,6 +1,6 @@
-We follow how the `androidx.compose.material.icons.*.*` extensions are written but
-for other icons. The idea is to translate the SVG path attribute into a series of
-method calls on `PathBuilder`. This is pretty straightforward :)
+We follow how the `androidx.compose.material.icons.*.*` extensions are written but for other icons.
+The idea is to translate the SVG path attribute into a series of method calls on `PathBuilder`. This
+is pretty straightforward :)
 
 Here is a table/list of all the SVG path commands and their alternative on PathBuilder:
 
