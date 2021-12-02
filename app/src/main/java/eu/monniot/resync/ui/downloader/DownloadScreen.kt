@@ -17,6 +17,7 @@ import eu.monniot.resync.downloader.*
 import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.rmcloud.readTokens
+import eu.monniot.resync.ui.KeepScreenOn
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 
@@ -42,6 +43,12 @@ fun DownloadScreen(
             )
         )
     }
+
+    // Because AO3 download can be quite long (1s between chapters + rate limit wait time),
+    // we keep the screen on to avoid having the app goes into background and interrupt
+    // the download.
+    // We can't really do background processing either as we are using a WebView.
+    KeepScreenOn()
 
     LaunchedEffect(key1 = storyId, key2 = chapterId) {
         try {
