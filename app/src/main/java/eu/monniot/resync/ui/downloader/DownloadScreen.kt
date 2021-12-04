@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import eu.monniot.resync.FileName
@@ -18,6 +19,7 @@ import eu.monniot.resync.makeEpub
 import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.rmcloud.readTokens
 import eu.monniot.resync.ui.KeepScreenOn
+import eu.monniot.resync.ui.ReSyncTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 
@@ -340,6 +342,8 @@ sealed interface DownloadState {
     ) : DownloadState
 
     object BuildingAndUploading : DownloadState
+
+    // TODO Add remaining time until screen is removed
     object Done : DownloadState
 }
 
@@ -363,7 +367,7 @@ fun FetchingFirstChapterView(storyId: StoryId, chapterId: ChapterId) {
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "(id: $storyId | Chapter: $chapterId)",
+            text = "(id: ${storyId.id} | Chapter: ${chapterId.id})",
             style = MaterialTheme.typography.body2,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
@@ -377,6 +381,20 @@ fun FetchingFirstChapterView(storyId: StoryId, chapterId: ChapterId) {
                 .align(Alignment.CenterHorizontally)
         )
 
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Looking up story"
+)
+@Composable
+fun FetchFirstPreview() {
+    ReSyncTheme {
+        FetchingFirstChapterView(
+            storyId = StoryId(1),
+            chapterId = ChapterId(null),
+        )
     }
 }
 
@@ -420,6 +438,7 @@ fun ConfirmChapters(
                 .fillMaxWidth()
         )
 
+        // Synchronisation choice
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -494,6 +513,45 @@ fun ConfirmChapters(
     }
 }
 
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "Ask Confirmation (Light)",
+)
+@Composable
+fun ConfirmChaptersLightPreview() {
+    ReSyncTheme {
+        ConfirmChapters(
+            storyName = "The Story Name",
+            authorName = "The Author Name",
+            initialChapterNumber = 1,
+            totalChapters = 42,
+            driverType = DriverType.ArchiveOfOurOwn,
+            onUserConfirmation = {},
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "Ask Confirmation (Dark)",
+)
+@Composable
+fun ConfirmChaptersDarkPreview() {
+    ReSyncTheme(darkTheme = true) {
+        ConfirmChapters(
+            storyName = "The Story Name",
+            authorName = "The Author Name",
+            initialChapterNumber = 1,
+            totalChapters = 42,
+            driverType = DriverType.ArchiveOfOurOwn,
+            onUserConfirmation = {},
+        )
+    }
+}
+
 @Composable
 fun DownloadingRemainingChapters(
     currentlyDownloading: Int,
@@ -550,5 +608,35 @@ fun DownloadingRemainingChapters(
             )
         }
 
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Downloading chapters (w/o notice)"
+)
+@Composable
+fun DownloadingRemainingChaptersPreview() {
+    ReSyncTheme {
+        DownloadingRemainingChapters(
+            currentlyDownloading = 8888,
+            totalToDownloads = 9999,
+            notice = null
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Downloading chapters (with notice)"
+)
+@Composable
+fun DownloadingRemainingChaptersNoticePreview() {
+    ReSyncTheme {
+        DownloadingRemainingChapters(
+            currentlyDownloading = 2,
+            totalToDownloads = 3,
+            notice = "AO3 rate limit hit (1 time)\nWaiting 90sec before resuming download."
+        )
     }
 }
