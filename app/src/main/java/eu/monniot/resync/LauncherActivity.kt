@@ -15,16 +15,14 @@ class LauncherActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val tokens = mutableStateOf(readTokens(applicationContext))
+        val tokens = mutableStateOf(readTokens(applicationContext) != null)
 
         setContent(null) {
             ReSyncTheme {
                 Surface(color = MaterialTheme.colors.background) {
 
-                    if (tokens.value == null) {
-                        SetupRemarkableScreen {
-                            tokens.value = it
-                        }
+                    if (tokens.value) {
+                        SetupRemarkableScreen(onDone = { tokens.value = true })
                     } else {
                         LauncherScreen()
                     }
