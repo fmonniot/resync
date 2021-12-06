@@ -64,6 +64,50 @@ class ArchiveOfOurOwnDriverTest {
     }
 
     @Test
+    fun parse_unknownPlannedChapters() {
+        val html = getResourceAsText("15343806-chapters-37208093")
+        val actual =
+            driver.parseWebPage(html, StoryId(15343806), ChapterId(37208093)).copy(content = "")
+        val expected = Chapter(
+            StoryId(15343806),
+            ChapterId(37208093),
+            mapOf(
+                1 to ChapterId(35603070),
+                2 to ChapterId(35603169),
+                3 to ChapterId(35603160),
+                4 to ChapterId(35603412),
+                5 to ChapterId(35603439),
+                6 to ChapterId(35603490),
+                7 to ChapterId(35603517),
+                8 to ChapterId(35603541),
+                9 to ChapterId(35603592),
+                10 to ChapterId(35603607),
+                11 to ChapterId(35603628),
+                12 to ChapterId(35686365),
+                13 to ChapterId(37208093),
+                14 to ChapterId(40007271),
+                15 to ChapterId(43238078),
+                16 to ChapterId(50362376),
+                17 to ChapterId(55007023),
+                18 to ChapterId(59087716),
+                19 to ChapterId(60479464),
+                20 to ChapterId(63157024),
+                21 to ChapterId(69058209),
+                22 to ChapterId(69962349),
+                23 to ChapterId(73217637),
+            ),
+            13,
+            "Evil Fantasies",
+            "A Godfather's Promise",
+            "TheMetalSage",
+            23,
+            ""
+        )
+
+        Assert.assertEquals(expected, actual)
+    }
+
+    @Test
     fun parse_retryLater_throwsException() {
         val html = getResourceAsText("retry-later")
 

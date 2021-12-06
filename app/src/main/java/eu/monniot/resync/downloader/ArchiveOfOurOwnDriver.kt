@@ -31,11 +31,12 @@ class ArchiveOfOurOwnDriver : Driver() {
         // first number is published total, second number is planned total
         // We are only interested in the first one, as we want to know what
         // we can fetch. Non-published works isn't available :)
-        val (totalPublishedChapters, _) = document.select(".work.meta.group dd.chapters")
+        val (totalPublishedChaptersStr, _) = document.select(".work.meta.group dd.chapters")
             .text()
             .superTrim()
             .split("/")
-            .map { it.toInt() }
+
+        val totalPublishedChapters = totalPublishedChaptersStr.toInt()
 
         val storyName = document.select("h2.title").text().superTrim()
         val authorName = document.select("h3.byline.heading").text().superTrim()
