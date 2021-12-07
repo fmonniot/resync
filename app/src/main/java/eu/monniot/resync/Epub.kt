@@ -60,11 +60,24 @@ fun Book.addChapter(chapter: Chapter, insertTitle: Boolean) {
         "<h2>${chapterName}</h2><hr style=\"width:100%;margin: 0 10% 0 10%;\"></hr>"
     } else ""
 
+    val innerHtml = chapter.content
+        // The FF.Net extractor used a XML serializer to account for ff.net not being
+        // rigorous with its xhtml. We need to remove that piece of metadata for readers
+        // to be happy.
+        // Is it still true ? I don't think so but I don't have time to double check.
+        .replace("xmlns=\"http://www.w3.org/1999/xhtml\"", "")
+        // The epub reader (or perhaps the format) doesn't accepts unbreakable space so let's
+        // remove them. And because many authors use the &nbsp;<br>&nbsp;<br>&nbsp sequence, which
+        // results in in two open tag without closing one (<br><br>), we also make those
+        // self closing. Otherwise many readers will see the chapter as broken
+        .replace("&nbsp;", "")
+        .replace("<br>", "<br/>")
+
     val content = """<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
 <body>
 $title
-${chapter.content.replace("xmlns=\"http://www.w3.org/1999/xhtml\"", "")}
+$innerHtml
 </body>
 </html>"""
 
