@@ -52,7 +52,11 @@ class ArchiveOfOurOwnDriver : Driver() {
             .textNodes().lastOrNull()
             ?.text()?.substring(1)?.superTrim()
 
-        val content = document.select("#chapters .userstuff").html()
+        val userStuff = document.select("#chapters .userstuff")
+        // Probably used for accessibility, let's remove it as it serves no purpose in the epub version.
+        // Plus it's quite weird when reading the book :)
+        userStuff.select("#work").remove()
+        val content = userStuff.html()
 
         return Chapter(
             storyId,
