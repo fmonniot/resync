@@ -119,6 +119,8 @@ fun ConsolidateView(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (documents.isEmpty()) {
+                        // TODO Fill max height, otherwise the pull is hard to do
+                        // (and you have to know the trick)
                         item {
                             Text("No documents yet, pull to refresh")
                         }
