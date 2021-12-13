@@ -8,6 +8,14 @@ class FanFictionNetDriver : Driver() {
         "https://m.fanfiction.net/s/${storyId.id}/${chapterId.id ?: 1}"
 
     override fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter {
+
+        if (source.contains("DDoS protection by")) {
+            throw Companion.WaitAndTryAgain
+        }
+
+        println("##### debugging (cloudflare ?)")
+        println(source)
+
         val document = Jsoup.parse(source)
 
         val extractText = { selector: String ->

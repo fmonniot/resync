@@ -173,4 +173,14 @@ class FanFictionNetDriverTest {
         Assert.assertEquals(expected, actual)
     }
 
+
+    @Test
+    fun parse_cloudflare_aChapter() {
+        val html = getResourceAsText("cloudflare")
+
+        Assert.assertThrows(Driver.Companion.WaitAndTryAgain::class.java) {
+            driver.parseWebPage(html, StoryId(13846282), ChapterId(1))
+        }
+    }
+
 }

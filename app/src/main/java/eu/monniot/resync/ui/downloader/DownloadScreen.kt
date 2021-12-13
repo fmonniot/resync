@@ -197,10 +197,6 @@ suspend fun downloadLogic(
                         // TODO Check if the index is correctly aligned (0 or 1)
                         setDlState(index, null)
 
-                        // Let's see if we can bypass the RL. Don't do it in prod though.
-                        // It should only be a last resort thing (mainly for dev)
-                        driver.cleanAll()
-
                         // TODO Investigate if storing chapters on disk is a good idea or not
                         // Mostly because with AO3's RL dl a story can now take a long time,
                         // increasing the risk of loosing work/time.

@@ -87,6 +87,10 @@ fun StorySelectionView(
             }
         }
 
+        Text("Note that FF.Net has recently changed their Cloudflare protection plan" +
+                " and as such, using that provider might crash the app. If that is the" +
+                " case, then retrying won't help. Hopefully that is something we can fix.")
+
         Button(onClick = onClick) {
             Text("Sync")
         }
