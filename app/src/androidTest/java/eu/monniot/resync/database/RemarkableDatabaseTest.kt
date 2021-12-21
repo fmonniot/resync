@@ -47,7 +47,7 @@ class RemarkableDatabaseTest {
             bookmarked = true,
             parent = null
         )
-        todoDao.insert(todoItem)
+        todoDao.upsert(todoItem)
         val items = todoDao.getAll().single()
         assertEquals(items, listOf(todoItem))
     }
