@@ -42,15 +42,15 @@ abstract class Driver {
 
         while (chapter == null) {
             try {
-                println("Loading extract script")
-                view?.loadUrl(extractSourceUrl)
-
                 val html = jsInterface.waitForHtml()
                 chapter = parseWebPage(html, storyId, chapterId)
             } catch (e: WaitAndTryAgain) {
                 println("driver told us to wait and try to extract again. Waiting 5 seconds")
                 jsInterface.resetText()
                 delay(5000)
+
+                println("Loading extract script (again)")
+                view?.loadUrl(extractSourceUrl)
             }
         }
 
