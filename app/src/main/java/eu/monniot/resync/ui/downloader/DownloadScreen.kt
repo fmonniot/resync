@@ -3,6 +3,8 @@ package eu.monniot.resync.ui.downloader
 import android.content.Context
 import android.webkit.WebView
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +24,7 @@ import eu.monniot.resync.ui.KeepScreenOn
 import eu.monniot.resync.ui.ReSyncTheme
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
+import java.lang.NumberFormatException
 
 @Composable
 fun DownloadScreen(
@@ -58,8 +61,14 @@ fun DownloadScreen(
             driver.ready()
 
             downloadLogic(context, storyId, chapterId, driverType, driver, setState)
-        } finally {
+
+            // Only call onDone if there was no error, otherwise let the user
+            // choose when to close the app.
             onDone()
+        } catch (e: Throwable) {
+            println("Error caught when downloading story")
+            e.printStackTrace()
+            setState(DownloadState.Error(e))
         }
     }
 
@@ -89,6 +98,12 @@ fun DownloadScreen(
                 currentlyDownloading = state.currentlyDownloading,
                 totalToDownloads = state.totalToDownloads,
                 notice = state.notice,
+            )
+            is DownloadState.Error -> DisplayDownloadError(
+                error = state.throwable,
+                driverType,
+                storyId,
+                chapterId
             )
             DownloadState.BuildingAndUploading -> Text("Uploading to the reMarkable Cloud")
             DownloadState.Done -> Text("The story is now available on your tablet")
@@ -336,6 +351,8 @@ sealed interface DownloadState {
         val totalToDownloads: Int,
         val notice: String?,
     ) : DownloadState
+
+    data class Error(val throwable: Throwable) : DownloadState
 
     object BuildingAndUploading : DownloadState
 
@@ -622,6 +639,39 @@ fun DownloadingRemainingChaptersPreview() {
     }
 }
 
+@Composable
+fun DisplayDownloadError(
+    error: Throwable,
+    driverType: DriverType,
+    storyId: StoryId,
+    chapterId: ChapterId,
+) {
+    val state = rememberScrollState()
+
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .verticalScroll(state),
+    ) {
+
+        Text(
+            text = "Error while downloading story",
+            style = MaterialTheme.typography.h6,
+        )
+
+        Text(
+            text = "$storyId; $chapterId; DriverType($driverType)",
+            style = MaterialTheme.typography.body2,
+            textAlign = TextAlign.Center,
+        )
+
+        Text(error.stackTraceToString())
+    }
+}
+
 @Preview(
     showBackground = true,
     name = "Downloading chapters (with notice)"
@@ -633,6 +683,24 @@ fun DownloadingRemainingChaptersNoticePreview() {
             currentlyDownloading = 2,
             totalToDownloads = 3,
             notice = "AO3 rate limit hit (1 time)\nWaiting 90sec before resuming download."
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Download failed"
+)
+@Composable
+fun DisplayDownloadErrorPreview() {
+    val exception = NumberFormatException("For input string: \"\"")
+
+    ReSyncTheme {
+        DisplayDownloadError(
+            error = exception,
+            storyId = StoryId(27855042),
+            chapterId = ChapterId(68198782),
+            driverType = DriverType.ArchiveOfOurOwn
         )
     }
 }
