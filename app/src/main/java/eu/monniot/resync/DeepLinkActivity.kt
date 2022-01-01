@@ -29,7 +29,7 @@ class DeepLinkActivity : AppCompatActivity() {
                         driverType,
                         storyId,
                         chapterId,
-                        onDone = {}
+                        onDone = { finish() }
                     )
                 }
             }
