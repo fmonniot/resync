@@ -98,7 +98,7 @@ dependencies {
     implementation 'org.slf4j:slf4j-android:1.7.32'
 
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.5.2-native-mt'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0-native-mt'
     testImplementation 'org.robolectric:robolectric:4.7.3'
 
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
