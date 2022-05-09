@@ -1,8 +1,17 @@
 package eu.monniot.resync.downloader
 
+import android.content.Context
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import org.jsoup.Jsoup
+import java.io.File
 
-class FanFictionNetDriver : Driver() {
+class FanFictionNetDriver(private val ctx: Context) : Driver() {
+
+    override val ioDispatcher: CoroutineDispatcher
+        get() = Dispatchers.IO
+    override val tmpChaptersFolder: File
+        get() = ctx.filesDir.resolve("ffnet")
 
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
         "https://m.fanfiction.net/s/${storyId.id}/${chapterId.id ?: 1}"
@@ -12,9 +21,6 @@ class FanFictionNetDriver : Driver() {
         if (source.contains("DDoS protection by")) {
             throw Companion.WaitAndTryAgain
         }
-
-        println("##### debugging (cloudflare ?)")
-        println(source)
 
         val document = Jsoup.parse(source)
 

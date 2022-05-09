@@ -1,11 +1,13 @@
 package eu.monniot.resync.downloader
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.os.Environment
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
+import java.io.File
 
 // Because of its reliance of a WebView, the Driver should be in the same
 // composable tree as the WebView. That way, if the view is being removed
@@ -15,6 +17,9 @@ import kotlinx.coroutines.delay
 abstract class Driver {
     private var view: WebView? = null
     private val ready = CompletableDeferred<Unit>()
+
+    protected abstract val ioDispatcher: CoroutineDispatcher
+    protected abstract val tmpChaptersFolder: File
 
     abstract fun makeUrl(storyId: StoryId, chapterId: ChapterId): String
 
@@ -33,7 +38,26 @@ abstract class Driver {
         this.ready.await()
     }
 
+    // Could take a Context here and make the temporary folder
+    // That would mean less places where the
     suspend fun readChapter(storyId: StoryId, chapterId: ChapterId): Chapter {
+        val tmpChapterFile = tmpChaptersFolder.resolve("${storyId.id}/${chapterId.id}.html")
+        val tmpChapter = withContext(ioDispatcher) {
+            if (!tmpChapterFile.exists()) return@withContext null
+
+            val html = tmpChapterFile.readText()
+            try {
+                val c = parseWebPage(html, storyId, chapterId)
+                println("Got chapter from local cache (${tmpChapterFile.path})")
+                return@withContext c
+            } catch (e: Exception) {
+                println("Couldn't parse locally stored file. Error: $e")
+                return@withContext null
+            }
+        }
+
+        if (tmpChapter != null) return tmpChapter
+
         val jsInterface = JsInterface()
         view?.addJavascriptInterface(jsInterface, "grabber")
         view?.loadUrl(makeUrl(storyId, chapterId))
@@ -44,6 +68,12 @@ abstract class Driver {
             try {
                 val html = jsInterface.waitForHtml()
                 chapter = parseWebPage(html, storyId, chapterId)
+
+                withContext(ioDispatcher) {
+                    println("parent file = ${tmpChapterFile.parentFile}")
+                    tmpChapterFile.parentFile?.mkdirs()
+                    tmpChapterFile.writeText(html)
+                }
             } catch (e: WaitAndTryAgain) {
                 println("driver told us to wait and try to extract again. Waiting 5 seconds")
                 jsInterface.resetText()

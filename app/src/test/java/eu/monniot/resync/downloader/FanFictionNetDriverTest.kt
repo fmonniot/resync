@@ -9,7 +9,7 @@ class FanFictionNetDriverTest {
         return javaClass.classLoader!!.getResource("ffnet/s-$path.html")!!.readText()
     }
 
-    private val driver = FanFictionNetDriver()
+    private val driver = FanFictionNetDriver(null!!)
 
     private val index1Chapter = mapOf(1 to ChapterId(1))
     private val index2Chapters = (1..2).associateWith { ChapterId(it) }

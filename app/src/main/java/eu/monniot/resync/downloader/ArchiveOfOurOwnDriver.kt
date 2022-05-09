@@ -1,12 +1,21 @@
 package eu.monniot.resync.downloader
 
+import android.content.Context
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import org.jsoup.Jsoup
+import java.io.File
 
 // AO3 has a rate limit of 40 chapters per ??? (more than a minute I think)
 // Seems it's 40 per 5 minutes. At least trying again after 4m30 is still limited.
 // There might be a bit of leeway though, as another time the RL kicked in at 40
 // load but was working again after 270 seconds.
-class ArchiveOfOurOwnDriver : Driver() {
+class ArchiveOfOurOwnDriver(private val ctx: Context) : Driver() {
+
+    override val ioDispatcher: CoroutineDispatcher
+        get() = Dispatchers.IO
+    override val tmpChaptersFolder: File
+        get() = ctx.filesDir.resolve("ffnet")
 
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
         if (chapterId.id == null) {

@@ -9,7 +9,7 @@ class ArchiveOfOurOwnDriverTest {
         return javaClass.classLoader!!.getResource("ao3/works-$path.html")!!.readText()
     }
 
-    private val driver = ArchiveOfOurOwnDriver()
+    private val driver = ArchiveOfOurOwnDriver(null!!)
 
     @Test
     fun parse_oneShotStory_firstChapter() {
