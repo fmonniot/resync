@@ -15,7 +15,9 @@ class LauncherActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val tokensPresent = mutableStateOf(readTokens(applicationContext) != null)
+        // TODO That might not be such a good idea now that we have multiple account possible
+        // It's probably a better idea to let the screens handle this responsibility
+        val tokensPresent = mutableStateOf(readTokens(applicationContext).second != null)
 
         setContent(null) {
             ReSyncTheme {

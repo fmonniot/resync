@@ -281,7 +281,7 @@ suspend fun downloadLogic(
     // TODO Inject tokens as parameters
     // Which means we will be able to test this function as unit test
     // without mocking the android framework
-    val tokens = readTokens(context)
+    val tokens = readTokens(context).second
 
     if (tokens == null) {
         // TODO save epub for later and display it in the LauncherActivity

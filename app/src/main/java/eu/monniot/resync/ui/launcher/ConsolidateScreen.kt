@@ -10,6 +10,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.tooling.preview.Preview
@@ -22,6 +23,8 @@ import eu.monniot.resync.database.RemarkableDatabase
 import eu.monniot.resync.ui.ReSyncTheme
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Devices
+import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import eu.monniot.resync.FileName
@@ -84,81 +87,107 @@ fun ConsolidateScreen() {
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ConsolidateView(
-    initialized: Boolean,
+    initialized: ViewState,
     refreshing: Boolean,
     documents: List<GroupedDocument>,
     onRefresh: () -> Unit = {}
 ) {
-    if (initialized) {
-
-        val modalBottomSheetState = rememberModalBottomSheetState(
-            initialValue = ModalBottomSheetValue.Hidden
-        )
-        val coroutineScope = rememberCoroutineScope()
-
-        var bottomSheetDocument by remember { mutableStateOf<GroupedDocument?>(null) }
-
-        ModalBottomSheetLayout(
-            sheetState = modalBottomSheetState,
-            sheetContent = {
-                val doc = bottomSheetDocument
-                if (doc == null) {
-                    Text("No document selected")
-                } else {
-                    DocumentBottomSheetView(doc)
-                }
-            }
-        ) {
-
-            SwipeRefresh(
+    when (initialized) {
+        ViewState.NoAccount ->
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                state = rememberSwipeRefreshState(refreshing),
-                onRefresh = onRefresh,
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (documents.isEmpty()) {
-                        // TODO Fill max height, otherwise the pull is hard to do
-                        // (and you have to know the trick)
-                        item {
-                            Text("No documents yet, pull to refresh")
-                        }
-                    } else {
+                Icon(
+                    Icons.Rounded.Warning,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .padding(bottom = 8.dp),
+                    contentDescription = "No reMarkable account set",
+                    tint = MaterialTheme.colors.onPrimary
+                )
 
-                        // TODO Sort and group documents alphabetically
-                        items(documents) { doc ->
-                            ListItem(
-                                text = { Text(doc.title) },
-                                secondaryText = {
-                                    // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
-                                    // See also GroupedDocument data class
-                                    val text =
-                                        doc.chapters.joinToString { FileName.formatChapters(it) }
-                                    Text(text)
-                                },
-                                modifier = Modifier.clickable {
-                                    bottomSheetDocument = doc
-                                    coroutineScope.launch {
-                                        modalBottomSheetState.show()
+                Text("No reMarkable account set")
+            }
+
+        ViewState.NotInitialized ->
+            // TODO Is this feature still something I need ?
+            Column {
+                Text("TODO: Select a folder")
+            }
+
+        ViewState.Ok -> {
+
+            val modalBottomSheetState = rememberModalBottomSheetState(
+                initialValue = ModalBottomSheetValue.Hidden
+            )
+            val coroutineScope = rememberCoroutineScope()
+
+            var bottomSheetDocument by remember { mutableStateOf<GroupedDocument?>(null) }
+
+            ModalBottomSheetLayout(
+                sheetState = modalBottomSheetState,
+                sheetContent = {
+                    val doc = bottomSheetDocument
+                    if (doc == null) {
+                        Text("No document selected")
+                    } else {
+                        DocumentBottomSheetView(doc)
+                    }
+                }
+            ) {
+
+                SwipeRefresh(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = rememberSwipeRefreshState(refreshing),
+                    onRefresh = onRefresh,
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (documents.isEmpty()) {
+                            // TODO Fill max height, otherwise the pull is hard to do
+                            // (and you have to know the trick)
+                            item {
+                                Text("No documents yet, pull to refresh")
+                            }
+                        } else {
+
+                            // TODO Sort and group documents alphabetically
+                            items(documents) { doc ->
+                                ListItem(
+                                    text = { Text(doc.title) },
+                                    secondaryText = {
+                                        // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
+                                        // See also GroupedDocument data class
+                                        val text =
+                                            doc.chapters.joinToString { FileName.formatChapters(it) }
+                                        Text(text)
+                                    },
+                                    modifier = Modifier.clickable {
+                                        bottomSheetDocument = doc
+                                        coroutineScope.launch {
+                                            modalBottomSheetState.show()
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-    } else {
-        Column {
-            Text("TODO: Select a folder")
-        }
     }
 }
 
+// The ColumnScope received isn't used, but I do want it to have the
+// compiler remind me that this function needs to be within a vertical
+// alignment (i.e. a Column).
+@Suppress("unused")
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun DocumentBottomSheetView(document: GroupedDocument) {
+fun @Composable ColumnScope.DocumentBottomSheetView(document: GroupedDocument) {
 
     ListItem(
         text = {
@@ -177,7 +206,12 @@ fun DocumentBottomSheetView(document: GroupedDocument) {
     ListItem(
         text = {
             val text =
-                document.chapters.joinToString { FileName.formatChapters(it, withPrefix = true) }
+                document.chapters.joinToString {
+                    FileName.formatChapters(
+                        it,
+                        withPrefix = true
+                    )
+                }
 
             Text(text)
         },
@@ -230,7 +264,9 @@ fun DocumentBottomSheetViewPreview() {
     val doc =
         GroupedDocument("Story B", listOf(FileName.RangeChapter(1, 2), FileName.OneChapter(4)))
     ReSyncTheme {
-        DocumentBottomSheetView(doc)
+        Column {
+            DocumentBottomSheetView(doc)
+        }
     }
 }
 
@@ -240,9 +276,9 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     private val dao: DocumentsDao
     private val rmCloud: RmClient?
     private val isRefreshing = MutableStateFlow(false)
-    private val isInitialized = mutableStateOf(true)
+    private val isInitialized = mutableStateOf(ViewState.NotInitialized)
 
-    val initialized: State<Boolean>
+    val initialized: State<ViewState>
         get() = isInitialized
     val refreshing: StateFlow<Boolean>
         get() = isRefreshing.asStateFlow()
@@ -253,7 +289,8 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
         val db = RemarkableDatabase.getInstance(application)
 
         val tokens = readTokens(application)
-        rmCloud = tokens?.let { RmClient(it) }
+        println(tokens)
+        rmCloud = tokens.second?.let { RmClient(it) }
         dao = db.documentsDao()
 
 
@@ -266,7 +303,6 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
 
     fun refreshDocuments() {
         viewModelScope.launch {
-            // TODO See how that integrate with a pull down compose widget
             if (rmCloud != null) {
                 isRefreshing.emit(true)
                 syncRemoteFiles(rmCloud, dao)
@@ -311,7 +347,6 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
                 .toList()
         }
 
-
         suspend fun syncRemoteFiles(client: RmClient, dao: DocumentsDao) {
             val docs = client.listDocuments().map { Document.fromApi(it) }
 
@@ -322,26 +357,55 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     }
 }
 
+enum class ViewState {
+    NoAccount,
+    NotInitialized,
+    Ok
+}
+
 data class GroupedDocument(val title: String, val chapters: List<FileName.Chapters>)
 
-@Preview
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+)
 @Composable
 fun ConsolidateViewUninitializedPreview() {
     ReSyncTheme {
-        ConsolidateView(false, false, emptyList())
+        ConsolidateView(ViewState.NotInitialized, false, emptyList())
     }
 }
 
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+)
+@Composable
+fun ConsolidateViewNoAccountPreview() {
+    ReSyncTheme {
+        ConsolidateView(ViewState.NoAccount, false, emptyList())
+    }
+}
 
-@Preview
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+)
 @Composable
 fun ConsolidateViewInitializedNoDocsPreview() {
     ReSyncTheme {
-        ConsolidateView(true, false, emptyList())
+        ConsolidateView(ViewState.Ok, false, emptyList())
     }
 }
 
-@Preview
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+)
 @Composable
 fun ConsolidateViewInitializedDocsPreview() {
     val docs = listOf(
@@ -350,6 +414,6 @@ fun ConsolidateViewInitializedDocsPreview() {
         GroupedDocument("Story C", listOf(FileName.RangeChapter(2, 3)))
     )
     ReSyncTheme {
-        ConsolidateView(true, false, docs)
+        ConsolidateView(ViewState.Ok, false, docs)
     }
 }

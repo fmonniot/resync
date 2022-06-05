@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Devices
@@ -19,11 +20,12 @@ enum class LauncherScreenItem(val sectionName: String, val icon: ImageVector) {
     Search("Search", Icons.Filled.Search),
     Consolidate("Consolidate", LibraryBooks),
     Experimental("Experiments", Science),
+    Settings("Settings", Icons.Default.Settings)
 }
 
 @Composable
 fun LauncherScreen(
-    initialScreenItem: LauncherScreenItem = LauncherScreenItem.Consolidate
+    initialScreenItem: LauncherScreenItem = LauncherScreenItem.Settings
 ) {
     var selectedItem by remember { mutableStateOf(initialScreenItem) }
 
@@ -35,6 +37,7 @@ fun LauncherScreen(
                     LauncherScreenItem.Search -> SearchStoryScreen()
                     LauncherScreenItem.Consolidate -> ConsolidateScreen()
                     LauncherScreenItem.Experimental -> TestingSavingAnimation()
+                    LauncherScreenItem.Settings -> SettingsScreen()
                 }
             }
         },
@@ -67,6 +70,13 @@ fun LauncherScreen(
                     selected = selectedItem == LauncherScreenItem.Experimental,
                     onClick = { selectedItem = LauncherScreenItem.Experimental }
                 )
+
+                BottomNavigationItem(
+                    icon = { Icon(LauncherScreenItem.Settings.icon, contentDescription = null) },
+                    label = { Text(LauncherScreenItem.Settings.sectionName) },
+                    selected = selectedItem == LauncherScreenItem.Settings,
+                    onClick = { selectedItem = LauncherScreenItem.Settings }
+                )
             }
         }
     )
@@ -86,20 +96,6 @@ fun LauncherSearchPreview() {
     }
 }
 
-/* viewModel creation isn't supported in preview, so we can't do that one (yet ?)
-@Preview(
-    showBackground = true,
-    device = Devices.PIXEL_3,
-    //showSystemUi = true,
-    name = "Launcher - Consolidate - Pixel 3"
-)
-@Composable
-fun LauncherConsolidatePreview() {
-    ReSyncTheme {
-        LauncherScreen(LauncherScreenItem.Consolidate)
-    }
-}
-*/
 
 @Preview(
     showBackground = true,
@@ -111,5 +107,18 @@ fun LauncherConsolidatePreview() {
 fun LauncherExperimentalPreview() {
     ReSyncTheme {
         LauncherScreen(LauncherScreenItem.Experimental)
+    }
+}
+
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+    name = "Launcher - Settings - Pixel 3"
+)
+@Composable
+fun LauncherSettingsPreview() {
+    ReSyncTheme {
+        LauncherScreen(LauncherScreenItem.Settings)
     }
 }

@@ -25,6 +25,7 @@ import eu.monniot.resync.rmcloud.saveTokens
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 
+// TODO Rename SetupRemarkableAccount when switching to Account from legacy preferences
 @Composable
 fun SetupRemarkableScreen(onDone: () -> Unit) {
     val (state, setState) = remember { mutableStateOf<SetupState>(SetupState.Init) }
