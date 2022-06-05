@@ -19,20 +19,16 @@ private fun deviceTokenField(index: Int) = "deviceToken-${index}"
 private fun userTokenField(index: Int) = "userToken-${index}"
 
 private fun openSharedPrefs(context: Context): SharedPreferences {
-    val mainKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    val mainKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
 
-    return EncryptedSharedPreferences.create(
-        context,
+    return EncryptedSharedPreferences.create(context,
         "rmcloud",
         mainKey,
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
 }
 
-class AccountManager private constructor(private val sharedPreferences: SharedPreferences) {
+class PreferencesManager private constructor(private val sharedPreferences: SharedPreferences) {
 
 
     fun watchAccounts(): Flow<List<Account>> {
@@ -57,22 +53,27 @@ class AccountManager private constructor(private val sharedPreferences: SharedPr
         val nb = sharedPreferences.getInt(ACCOUNT_NUMBERS, 0)
         val selectedIndex = sharedPreferences.getInt(ACCOUNT_INDEX, -1)
 
-        // That might not work very well when there is no accounts set up.
-        // I'm ok with it for now, mainly because LauncherActivity requires to set up at least
-        // one account. I do need to improve the Account management in the future, it's too
-        // brittle right now and works only by accident (or rather, by following the exact same
-        // steps I have followed on my phone).
-        return (0..nb).map { idx ->
-            val name = sharedPreferences.getString(accountNameField(idx), null) ?: "No name"
+        Log.d(TAG, "ACCOUNT_NUMBERS = $nb; ACCOUNT_INDEX = $selectedIndex")
+
+        // Special casing when there is no accounts because the range below include
+        // nb (eg. nb = 0 would result in 0 being read, but we start at 1)
+        if (nb < 1) {
+            return emptyList()
+        }
+
+        // Accounts id/indices are 1-based
+        return (1..nb).map { idx ->
+            val name = sharedPreferences.getString(accountNameField(idx), null)
             val device = sharedPreferences.getString(deviceTokenField(idx), null)
             val user = sharedPreferences.getString(userTokenField(idx), null)
 
-            Account(
-                name,
+            Log.d(TAG,
+                "Reading accounts: idx=$idx; name=$name; device=${device?.let { "redacted" }}; user=${user?.let { "redacted" }}")
+
+            Account(name ?: "No name",
                 AccountId(idx),
                 Tokens.fromStrings(device, user),
-                idx == selectedIndex
-            )
+                idx == selectedIndex)
         }
     }
 
@@ -98,6 +99,8 @@ class AccountManager private constructor(private val sharedPreferences: SharedPr
 
             putInt(ACCOUNT_NUMBERS, next)
             putString(accountNameField(next), name)
+            putString(deviceTokenField(next), tokens.device)
+            putString(userTokenField(next), tokens.user)
             apply()
 
             next
@@ -107,7 +110,11 @@ class AccountManager private constructor(private val sharedPreferences: SharedPr
     }
 
     fun changeCurrentAccount(id: AccountId) {
+        with(sharedPreferences.edit()) {
+            putInt(ACCOUNT_INDEX, id.raw)
 
+            apply()
+        }
     }
 
     fun renameAccount(id: AccountId, name: String) {
@@ -118,14 +125,20 @@ class AccountManager private constructor(private val sharedPreferences: SharedPr
         }
     }
 
-    fun updateTokens(id: AccountId, tokens: Tokens): Account {
-        TODO()
+    companion object {
+        fun create(context: Context): PreferencesManager {
+
+            return PreferencesManager(openSharedPrefs(context))
+        }
     }
+}
+
+data class Tokens(val device: String, val user: String?) {
 
     companion object {
-        fun create(context: Context): AccountManager {
-
-            return AccountManager(openSharedPrefs(context))
+        internal fun fromStrings(device: String?, user: String?): Tokens? {
+            return if (device == null) null
+            else Tokens(device, user)
         }
     }
 }
@@ -133,10 +146,8 @@ class AccountManager private constructor(private val sharedPreferences: SharedPr
 data class Account(val name: String, val id: AccountId, val tokens: Tokens?, val active: Boolean) {
 
     companion object {
-        val samples = listOf(
-            Account("Personal Account", AccountId(1), null, true),
-            Account("Test Account", AccountId(2), null, false)
-        )
+        val samples = listOf(Account("Personal Account", AccountId(1), null, true),
+            Account("Test Account", AccountId(2), null, false))
     }
 }
 

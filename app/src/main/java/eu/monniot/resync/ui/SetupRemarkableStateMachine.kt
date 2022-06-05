@@ -1,6 +1,7 @@
 package eu.monniot.resync.ui
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -19,9 +20,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import eu.monniot.resync.rmcloud.PreferencesManager
 import eu.monniot.resync.rmcloud.Tokens
 import eu.monniot.resync.rmcloud.exchangeCodeForDeviceToken
-import eu.monniot.resync.rmcloud.saveTokens
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 
@@ -54,6 +55,8 @@ fun SetupRemarkableScreen(onDone: () -> Unit) {
         }
     }
 }
+
+private const val TAG = "SetupRemarkableAccount"
 
 sealed interface SetupState {
     object Init : SetupState
@@ -91,14 +94,14 @@ suspend fun setupLogic(
         } catch (e: Throwable) {
             // This will restart the loop and ask the user for a code, again
             invalidCode = true
-            println("Exchanging code failed with exception: $e")
+            Log.e(TAG, "Exchanging code failed with exception: $e", e)
         }
     }
 
     // 3. Saving the token on the device
-    setState(SetupState.ExchangingToken)
     val tokens = Tokens(token, user = null)
-    saveTokens(context, tokens)
+    // TODO We probably need a new step that asks the user for the account name
+    PreferencesManager.create(context).addAccount("New Account", tokens)
 
     // 4. Present the success screen
     val (continueClick, onContinueClick) = callbackToDeferredUnit()

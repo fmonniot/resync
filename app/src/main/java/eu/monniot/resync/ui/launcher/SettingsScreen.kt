@@ -12,13 +12,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import eu.monniot.resync.rmcloud.Account
 import eu.monniot.resync.rmcloud.AccountId
-import eu.monniot.resync.rmcloud.AccountManager
+import eu.monniot.resync.rmcloud.PreferencesManager
 
 
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
-    val manager = remember { AccountManager.create(context) }
+    val manager = remember { PreferencesManager.create(context) }
     
     val accounts by manager.watchAccounts().collectAsState(initial = emptyList())
 
@@ -96,6 +96,7 @@ fun AccountEditDialog(
 
     val (name, updateName) = remember { mutableStateOf(account.name) }
 
+    // TODO Account deletion
     AlertDialog(onDismissRequest = onDismiss, confirmButton = {
         TextButton(onClick = { onConfirm(account.id, name) }) {
             Text("Confirm")

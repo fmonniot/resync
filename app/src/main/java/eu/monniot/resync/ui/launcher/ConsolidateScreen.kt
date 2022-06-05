@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import eu.monniot.resync.FileName
+import eu.monniot.resync.rmcloud.PreferencesManager
 import eu.monniot.resync.rmcloud.RmClient
-import eu.monniot.resync.rmcloud.readTokens
 import kotlinx.coroutines.flow.*
 
 // TODO Add a way to group together existing stories.
@@ -90,7 +90,7 @@ fun ConsolidateView(
     initialized: ViewState,
     refreshing: Boolean,
     documents: List<GroupedDocument>,
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
 ) {
     when (initialized) {
         ViewState.NoAccount ->
@@ -271,6 +271,9 @@ fun DocumentBottomSheetViewPreview() {
 }
 
 
+// TODO Update to support multi account
+// Either by filtering docs based on the active account or by adding
+// some metadata on the items to indicate where they are coming from.
 class ConsolidateViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao: DocumentsDao
@@ -288,9 +291,8 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     init {
         val db = RemarkableDatabase.getInstance(application)
 
-        val tokens = readTokens(application)
-        println(tokens)
-        rmCloud = tokens.second?.let { RmClient(it) }
+        val tokens = PreferencesManager.create(application).readCurrentAccount().tokens
+        rmCloud = tokens?.let { RmClient(it) }
         dao = db.documentsDao()
 
 

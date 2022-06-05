@@ -18,8 +18,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import eu.monniot.resync.FileName
 import eu.monniot.resync.downloader.*
 import eu.monniot.resync.makeEpub
+import eu.monniot.resync.rmcloud.PreferencesManager
 import eu.monniot.resync.rmcloud.RmClient
-import eu.monniot.resync.rmcloud.readTokens
 import eu.monniot.resync.ui.KeepScreenOn
 import eu.monniot.resync.ui.ReSyncTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -281,7 +281,7 @@ suspend fun downloadLogic(
     // TODO Inject tokens as parameters
     // Which means we will be able to test this function as unit test
     // without mocking the android framework
-    val tokens = readTokens(context).second
+    val tokens = PreferencesManager.create(context).readCurrentAccount().tokens
 
     if (tokens == null) {
         // TODO save epub for later and display it in the LauncherActivity
