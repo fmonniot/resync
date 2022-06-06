@@ -13,17 +13,24 @@ import androidx.compose.ui.unit.dp
 import eu.monniot.resync.rmcloud.Account
 import eu.monniot.resync.rmcloud.AccountId
 import eu.monniot.resync.rmcloud.PreferencesManager
+import eu.monniot.resync.rmcloud.PreferencesManager.Companion.Preferences
+import eu.monniot.resync.rmcloud.PreferencesManager.Companion.UploadMethod
 
 
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
     val manager = remember { PreferencesManager.create(context) }
-    
-    val accounts by manager.watchAccounts().collectAsState(initial = emptyList())
+
+    val preferences by manager.watchPreferences()
+        .collectAsState(initial = manager.readPreferences())
 
     SettingsView(
-        accounts,
+        preferences,
+        uploadViaShareChange = {
+            val method = if (it) UploadMethod.Share else UploadMethod.Direct
+            manager.changeUploadMethod(method)
+        },
         accountSelect = manager::changeCurrentAccount,
         accountRename = manager::renameAccount,
         addAccount = {
@@ -50,40 +57,63 @@ fun SettingsScreen() {
 // TODO Understand how adding a new account will work
 @Composable
 fun SettingsView(
-    accounts: List<Account>,
+    preferences: Preferences,
+    uploadViaShareChange: (Boolean) -> Unit,
     accountSelect: (AccountId) -> Unit,
     accountRename: (AccountId, String) -> Unit,
-    addAccount: () -> Unit
+    addAccount: () -> Unit,
 ) {
-    SettingsGroup(title = "reMarkable Account") {
-
-        val (editAccount, setEditAccount) = remember { mutableStateOf<Account?>(null) }
-
-        if (editAccount != null) {
-            AccountEditDialog(account = editAccount,
-                onDismiss = { setEditAccount(null) },
-                onConfirm = { id, name -> accountRename(id, name); setEditAccount(null) })
-        }
-
-        accounts.forEach { account ->
-            SettingsMenuLine(title = { Text(account.name) },
-                subtitle = if (account.tokens == null) {
-                    { Text("Not set up") }
-                } else {
-                    {}
-                },
-                action = {
-                    RadioButton(selected = account.active, onClick = { accountSelect(account.id) })
-                },
-                onClick = {
-                    setEditAccount(account)
-                })
-        }
+    Column(Modifier.padding(top = 8.dp)) {
 
         SettingsMenuLine(
-            title = { Text("Add another account (TODO)") },
-            onClick = addAccount
+            title = { Text("Upload via share") },
+            subtitle = {
+                val txt =
+                    if (preferences.uploadMethod == UploadMethod.Share)
+                        "Upload use rM app via Android Share"
+                    else
+                        "Upload will use Cloud directly"
+
+                Text(txt)
+            },
+            action = {
+                Checkbox(checked = preferences.uploadMethod == UploadMethod.Share,
+                    onCheckedChange = uploadViaShareChange)
+            },
+            onClick = {}
         )
+
+        SettingsGroup(title = "reMarkable Account") {
+
+            val (editAccount, setEditAccount) = remember { mutableStateOf<Account?>(null) }
+
+            if (editAccount != null) {
+                AccountEditDialog(account = editAccount,
+                    onDismiss = { setEditAccount(null) },
+                    onConfirm = { id, name -> accountRename(id, name); setEditAccount(null) })
+            }
+
+            preferences.accounts.forEach { account ->
+                SettingsMenuLine(title = { Text(account.name) },
+                    subtitle = if (account.tokens == null) {
+                        { Text("Not set up") }
+                    } else {
+                        {}
+                    },
+                    action = {
+                        RadioButton(selected = account.active,
+                            onClick = { accountSelect(account.id) })
+                    },
+                    onClick = {
+                        setEditAccount(account)
+                    })
+            }
+
+            SettingsMenuLine(
+                title = { Text("Add another account (TODO)") },
+                onClick = addAccount
+            )
+        }
     }
 }
 
@@ -114,19 +144,24 @@ fun AccountEditDialog(
 
 @Composable
 fun SettingsGroup(
-    title: String, content: @Composable ColumnScope.() -> Unit
+    title: String, content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
         // Group title
+
+        Divider(Modifier.padding(top=8.dp))
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(start = (16 + 40 + 8).dp, 0.dp, 16.dp, 0.dp),
+                .height(32.dp)
+                .padding(start = (16 + 40 + 8).dp, 8.dp, 16.dp, 8.dp),
             contentAlignment = Alignment.CenterStart
         ) {
+
+
             val primary = MaterialTheme.colors.primary
             val titleStyle = MaterialTheme.typography.subtitle2.copy(color = primary)
             Text(style = titleStyle, text = title)
@@ -224,7 +259,9 @@ internal fun SettingsTileAction(content: @Composable () -> Unit) {
 )
 @Composable
 internal fun SettingsScreenPreview() {
+    val prefs = Preferences(UploadMethod.Share, Account.samples)
+
     MaterialTheme {
-        SettingsView(accounts = Account.samples, {}, { _, _ -> }, {})
+        SettingsView(prefs, {}, {}, { _, _ -> }, {})
     }
 }

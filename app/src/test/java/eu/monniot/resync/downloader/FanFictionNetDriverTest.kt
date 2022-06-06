@@ -1,15 +1,20 @@
 package eu.monniot.resync.downloader
 
 import org.junit.Assert
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class FanFictionNetDriverTest {
+
+    @get:Rule
+    val folder: TemporaryFolder = TemporaryFolder()
 
     private fun getResourceAsText(path: String): String {
         return javaClass.classLoader!!.getResource("ffnet/s-$path.html")!!.readText()
     }
 
-    private val driver = FanFictionNetDriver(null!!)
+    private val driver by lazy { FanFictionNetDriver(folder.root)}
 
     private val index1Chapter = mapOf(1 to ChapterId(1))
     private val index2Chapters = (1..2).associateWith { ChapterId(it) }
@@ -183,4 +188,11 @@ class FanFictionNetDriverTest {
         }
     }
 
+    @Test
+    fun parse_issue164_reproducer() {
+        val html = getResourceAsText("13786171-21")
+        val actual = driver.parseWebPage(html, StoryId(13846282), ChapterId(1))
+
+        println(actual)
+    }
 }

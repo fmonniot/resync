@@ -1,15 +1,20 @@
 package eu.monniot.resync.downloader
 
 import org.junit.Assert
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class ArchiveOfOurOwnDriverTest {
+
+    @get:Rule
+    val folder: TemporaryFolder = TemporaryFolder()
 
     private fun getResourceAsText(path: String): String {
         return javaClass.classLoader!!.getResource("ao3/works-$path.html")!!.readText()
     }
 
-    private val driver = ArchiveOfOurOwnDriver(null!!)
+    private val driver by lazy { ArchiveOfOurOwnDriver(folder.root) }
 
     @Test
     fun parse_oneShotStory_firstChapter() {

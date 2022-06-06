@@ -20,8 +20,13 @@ import eu.monniot.resync.ui.downloader.DownloadScreen
 @Composable
 fun SearchStoryScreen() {
 
-    val storyId = remember { mutableStateOf(TextFieldValue("34804678")) }
-    val chapterId = remember { mutableStateOf(TextFieldValue("86665087")) }
+    /*
+    val storyId = remember { mutableStateOf(TextFieldValue("14007535")) }
+    val chapterId = remember { mutableStateOf(TextFieldValue("4")) }
+    val driverType = remember { mutableStateOf(DriverType.FanFictionNet) }
+     */
+    val storyId = remember { mutableStateOf(TextFieldValue("39200706")) }
+    val chapterId = remember { mutableStateOf(TextFieldValue("98724747")) }
     val driverType = remember { mutableStateOf(DriverType.ArchiveOfOurOwn) }
     val storySelected = remember { mutableStateOf(false) }
 

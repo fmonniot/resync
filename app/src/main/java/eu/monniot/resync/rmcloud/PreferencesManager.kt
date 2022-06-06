@@ -3,6 +3,7 @@ package eu.monniot.resync.rmcloud
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.compose.runtime.produceState
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.channels.awaitClose
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.channelFlow
 
 
 private const val TAG = "AccountManager"
+private const val UPLOAD_METHOD = "rmUploadMethod"
 private const val ACCOUNT_NUMBERS = "rmAccountNumbers"
 private const val ACCOUNT_INDEX = "rmAccountIndex"
 
@@ -30,23 +32,29 @@ private fun openSharedPrefs(context: Context): SharedPreferences {
 
 class PreferencesManager private constructor(private val sharedPreferences: SharedPreferences) {
 
-
-    fun watchAccounts(): Flow<List<Account>> {
+    // TODO watchPreferences
+    fun watchPreferences(): Flow<Preferences> {
         return channelFlow {
             val listener: SharedPreferences.OnSharedPreferenceChangeListener =
                 SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-                    trySend(listAccounts())
+                    trySend(readPreferences())
 
                     Unit
                 }
 
-            trySend(listAccounts())
             sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
 
             awaitClose {
                 sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener)
             }
         }
+    }
+
+    fun readPreferences(): Preferences {
+        val accounts = listAccounts()
+        val uploadMethod = readUploadMethod()
+
+        return Preferences(uploadMethod, accounts)
     }
 
     private fun listAccounts(): List<Account> {
@@ -125,7 +133,31 @@ class PreferencesManager private constructor(private val sharedPreferences: Shar
         }
     }
 
+    fun readUploadMethod(): UploadMethod {
+        return when (val raw = sharedPreferences.getString(UPLOAD_METHOD, "share")) {
+            "share" -> UploadMethod.Share
+            "direct" -> UploadMethod.Direct
+            else -> throw java.lang.IllegalStateException("Unknown method $raw")
+        }
+    }
+
+    fun changeUploadMethod(method: UploadMethod) {
+        val raw = when (method) {
+            UploadMethod.Direct -> "direct"
+            UploadMethod.Share -> "share"
+        }
+
+        with(sharedPreferences.edit()) {
+            putString(UPLOAD_METHOD, raw)
+            apply()
+        }
+    }
+
     companion object {
+        enum class UploadMethod { Direct, Share }
+
+        data class Preferences(val uploadMethod: UploadMethod, val accounts: List<Account>)
+
         fun create(context: Context): PreferencesManager {
 
             return PreferencesManager(openSharedPrefs(context))

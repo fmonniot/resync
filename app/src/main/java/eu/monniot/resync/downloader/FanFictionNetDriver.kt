@@ -1,17 +1,16 @@
 package eu.monniot.resync.downloader
 
-import android.content.Context
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import org.jsoup.Jsoup
 import java.io.File
 
-class FanFictionNetDriver(private val ctx: Context) : Driver() {
+class FanFictionNetDriver(private val filesDir: File) : Driver() {
 
     override val ioDispatcher: CoroutineDispatcher
         get() = Dispatchers.IO
     override val tmpChaptersFolder: File
-        get() = ctx.filesDir.resolve("ffnet")
+        get() = filesDir.resolve("ffnet")
 
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
         "https://m.fanfiction.net/s/${storyId.id}/${chapterId.id ?: 1}"

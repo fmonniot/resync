@@ -1,6 +1,10 @@
 package eu.monniot.resync.ui.downloader
 
+import android.content.ClipData
 import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.util.Log
 import android.webkit.WebView
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,6 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat.startActivity
+import androidx.core.content.FileProvider
+import eu.monniot.resync.BuildConfig
 import eu.monniot.resync.FileName
 import eu.monniot.resync.downloader.*
 import eu.monniot.resync.makeEpub
@@ -26,18 +33,20 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import java.lang.NumberFormatException
 
+private const val TAG = "DownloadFic"
+
 @Composable
 fun DownloadScreen(
     driverType: DriverType,
     storyId: StoryId,
     chapterId: ChapterId,
-    onDone: () -> Unit
+    onDone: () -> Unit,
 ) {
     val context = LocalContext.current
 
     val driver = when (driverType) {
-        DriverType.ArchiveOfOurOwn -> ArchiveOfOurOwnDriver(context)
-        DriverType.FanFictionNet -> FanFictionNetDriver(context)
+        DriverType.ArchiveOfOurOwn -> ArchiveOfOurOwnDriver(context.filesDir)
+        DriverType.FanFictionNet -> FanFictionNetDriver(context.filesDir)
     }
 
     val (state, setState) = remember {
@@ -74,10 +83,26 @@ fun DownloadScreen(
 
     Box {
 
+        // Not entirely certain if the size count for something tbh.
+        // At one point cloudflare was not resolving correctly, then
+        // I increased the size to what is below, it worked, then
+        // when I went back to the 1/1dp size, it continued working.
+        // Maybe a cookie? Let's see if small size continue to work.
+        // If no, I guess I'll need something to automatically
+        // display a big view for one load and then hide it again.
+        // No idea ¯\_(ツ)_/¯
+        val webViewModifier = if (!BuildConfig.DEBUG) {
+            Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+        } else {
+            Modifier.size(1.dp, 1.dp)
+        }
+
         // We need a web view to grab some fiction content.
         // This is mainly to go around the CloudFlare protection that FF.Net have.
         // By using a web view, we are seen as "normal" web traffic.
-        AndroidView(factory = ::WebView, modifier = Modifier.size(1.dp, 1.dp)) { webView ->
+        AndroidView(factory = ::WebView, modifier = webViewModifier) { webView ->
             driver.installGrabber(webView)
         }
 
@@ -155,6 +180,7 @@ suspend fun downloadLogic(
         // wait for user choice to be made
         val chapterSelection = userChoice.await()
 
+        Log.d(TAG, "whole story choice: chapterSelection=$chapterSelection")
         // Set the wholeStory flag based on user choice.
         wholeStory = when (chapterSelection) {
             ChapterSelection.All -> true
@@ -274,34 +300,74 @@ suspend fun downloadLogic(
     // Make sure that we put the chapters in order
     chaptersInEpub.sortBy { it.num }
 
-    // TODO Change makeEpub (or create a temporary alternative) to accept new Chapter class
+    // Build the epub file and its name
     val epub = makeEpub(chaptersInEpub)
     val fileName = FileName.make(chaptersInEpub, wholeStory)
 
-    // TODO Inject tokens as parameters
+    // TODO Inject PreferencesManager as parameter
     // Which means we will be able to test this function as unit test
     // without mocking the android framework
-    val tokens = PreferencesManager.create(context).readCurrentAccount().tokens
+    val preferencesManager = PreferencesManager.create(context)
 
-    if (tokens == null) {
-        // TODO save epub for later and display it in the LauncherActivity
-        // Also maybe have a custom screen to tell the user what happened ?
-    } else {
-        val rmCloud = RmClient(tokens)
-        rmCloud.uploadEpub(fileName, epub)
+    when (preferencesManager.readUploadMethod()) {
+        PreferencesManager.Companion.UploadMethod.Direct -> {
+            Log.d(TAG, "Upload to reMarkable cloud directly")
+            val tokens = preferencesManager.readCurrentAccount().tokens
+
+            if (tokens == null) {
+                // TODO save epub for later and display it in the LauncherActivity
+                // Also maybe have a custom screen to tell the user what happened ?
+            } else {
+                val rmCloud = RmClient(tokens)
+                rmCloud.uploadEpub(fileName, epub)
+            }
+
+            setState(DownloadState.Done)
+
+            // Wait for the done animation to be complete
+            // The activity will be close once this function return
+            delay(1500)
+        }
+        PreferencesManager.Companion.UploadMethod.Share -> {
+            Log.d(TAG, "Upload via Android Share")
+            // Read how to do so at https://developer.android.com/training/secure-file-sharing
+            // 1. Save the epub on file system
+            val epubFile = context.filesDir.resolve("epub/$fileName")
+            epubFile.parentFile?.mkdir()
+            epubFile.writeBytes(epub)
+
+            // 2. Initiate intent to share epub file
+            val fileUri = FileProvider.getUriForFile(
+                context,
+                "eu.monniot.resync.fileprovider",
+                epubFile
+            )
+
+            val shareIntent: Intent = Intent().apply {
+                action = Intent.ACTION_SEND
+                type = "application/epub+zip"
+
+                clipData = ClipData(fileName.replace(".epub", ""),
+                    arrayOf("application/epub+zip"),
+                    ClipData.Item(fileUri))
+
+                // BC purposes, which isn't require for rm app (maybe)
+                putExtra(Intent.EXTRA_STREAM, fileUri)
+
+                putExtra(Intent.EXTRA_SUBJECT, "Sharing Story...")
+                putExtra(Intent.EXTRA_TEXT, "Sharing Story...")
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+
+            startActivity(context, Intent.createChooser(shareIntent, "Share Story"), null)
+        }
     }
-
-    setState(DownloadState.Done)
-
-    // Wait for the done animation to be complete
-    // The activity will be close once this function return
-    delay(1500)
 }
 
 private suspend fun readWithRateLimit(
     read: suspend () -> Chapter,
     updateState: (String) -> Unit,
-    maxRetry: Int = 10, // try for 10 minutes to know the limit
+    maxRetry: Int = 10, // tried for 10 minutes to know the limit
 ): Chapter {
     for (i in 1..maxRetry) {
         try {
@@ -418,7 +484,7 @@ fun ConfirmChapters(
     initialChapterNumber: Int,
     totalChapters: Int,
     driverType: DriverType,
-    onUserConfirmation: (ChapterSelection) -> Unit
+    onUserConfirmation: (ChapterSelection) -> Unit,
 ) {
     Column(
         modifier = Modifier

@@ -12,6 +12,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReSync">
+
         <activity
             android:name=".LauncherActivity"
             android:theme="@style/Theme.ReSync.NoActionBar"
@@ -57,6 +58,16 @@
                     android:pathPrefix="/works" />
             </intent-filter>
         </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="eu.monniot.resync.fileprovider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
 
     </application>
 

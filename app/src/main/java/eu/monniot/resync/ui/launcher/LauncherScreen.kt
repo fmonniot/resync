@@ -25,7 +25,7 @@ enum class LauncherScreenItem(val sectionName: String, val icon: ImageVector) {
 
 @Composable
 fun LauncherScreen(
-    initialScreenItem: LauncherScreenItem = LauncherScreenItem.Settings
+    initialScreenItem: LauncherScreenItem = LauncherScreenItem.Search
 ) {
     var selectedItem by remember { mutableStateOf(initialScreenItem) }
 
