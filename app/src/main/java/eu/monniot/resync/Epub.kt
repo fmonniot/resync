@@ -72,6 +72,11 @@ fun Book.addChapter(chapter: Chapter, insertTitle: Boolean) {
         // self closing. Otherwise many readers will see the chapter as broken
         .replace("&nbsp;", "")
         .replace("<br>", "<br/>")
+        // Some authors uses break delimiter like "<hr size="1" noshade>". Unfortunately
+        // the reMarkable reader doesn't know what to do with those and bails out. We replace
+        // them with regular horizontal line instead.
+        // Fix https://github.com/fmonniot/resync/issues/164
+        .replace(Regex("<hr.+>"), "<hr/>")
 
     val content = """<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
