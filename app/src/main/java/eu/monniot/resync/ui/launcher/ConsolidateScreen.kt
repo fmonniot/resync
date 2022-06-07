@@ -102,10 +102,11 @@ fun ConsolidateView(
                 Icon(
                     Icons.Rounded.Warning,
                     modifier = Modifier
-                        .size(64.dp)
-                        .padding(bottom = 8.dp),
+                        .fillMaxWidth(0.5f)
+                        .aspectRatio(1f)
+                        .padding(bottom = 16.dp),
                     contentDescription = "No reMarkable account set",
-                    tint = MaterialTheme.colors.onPrimary
+                    tint = MaterialTheme.colors.onSurface.copy(alpha = 0.18f)
                 )
 
                 Text("No reMarkable account set")

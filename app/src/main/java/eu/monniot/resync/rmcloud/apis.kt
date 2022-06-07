@@ -67,6 +67,40 @@ interface DocumentStorageApi {
     }
 }
 
+interface BlobApi {
+
+    @POST("/api/v1/signed-urls/uploads")
+    suspend fun signedUrlForUpload(
+        @Header("Authorization") authorization: String,
+        @Body body: BlobStorageRequest
+    ): BlobStorageResponse
+
+    @POST("/api/v1/signed-urls/downloads")
+    suspend fun signedUrlForDownload(
+        @Header("Authorization") authorization: String,
+        @Body body: BlobStorageRequest
+    ): BlobStorageResponse
+
+
+    /* Not sure if I'll need that one
+    @POST("/api/v1/sync-complete")
+    suspend fun syncComplete(@Header("Authorization") authorization: String)
+     */
+
+
+    companion object {
+        fun build(client: OkHttpClient): BlobApi {
+            val retrofit = Retrofit.Builder()
+                .baseUrl("https://rm-blob-storage-prod.appspot.com")
+                .addConverterFactory(MoshiConverterFactory.create())
+                .client(client)
+                .build()
+
+            return retrofit.create(BlobApi::class.java)
+        }
+    }
+}
+
 /*
 TODO Inline in java class (and refine type if needed)
 Field	Type	Description
@@ -119,4 +153,18 @@ data class UpdateMetadataRequest(
     val Type: String,
     val Version: Int,
     val ModifiedClient: String
+)
+
+data class BlobStorageRequest(
+    val http_method: String, // PUT for upload, GET for download
+    val relative_path: String,
+    val initial_sync: Boolean? = null,
+    val generation: String? = null,
+)
+
+data class BlobStorageResponse(
+    val expires: String,
+    val method: String,
+    val relative_path: String,
+    val url: String,
 )

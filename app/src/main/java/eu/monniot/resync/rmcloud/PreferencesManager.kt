@@ -3,12 +3,13 @@ package eu.monniot.resync.rmcloud
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import androidx.compose.runtime.produceState
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.squareup.moshi.Moshi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import java.util.*
 
 
 private const val TAG = "AccountManager"
@@ -85,6 +86,7 @@ class PreferencesManager private constructor(private val sharedPreferences: Shar
         }
     }
 
+    // Used for the consolidate screen, where documents are based on the current account
     fun watchCurrentAccount(): Flow<Account> {
         TODO()
     }
@@ -167,7 +169,38 @@ class PreferencesManager private constructor(private val sharedPreferences: Shar
 
 data class Tokens(val device: String, val user: String?) {
 
+    val scopes by lazy {
+        if (user != null) {
+
+            val parts = user.split(".")
+            val payload: ByteArray = Base64.getDecoder().decode(parts[1])
+            val str = String(payload)
+
+            // From my experience, fromJson does NOT return null but instead throw…
+            // So don't think you are safe because you have handled a null young padawan…
+            val scopes = Moshi.Builder()
+                .build()
+                .adapter(JwtPayload::class.java)
+                .fromJson(str)
+                ?.scopes
+
+            scopes?.split(" ") ?: emptyList()
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Parse the user token, look at the claims' scopes and see if one
+     * sync:fox, sync:tortoise or sync:hare is present. If yes, that's
+     * protocol 1.5.
+     */
+    fun is15Account() =
+        scopes?.any { it == "sync:fox" || it == "sync:tortoise" || it == "sync:hare" } ?: false
+
     companion object {
+        internal data class JwtPayload(val scopes: String)
+
         internal fun fromStrings(device: String?, user: String?): Tokens? {
             return if (device == null) null
             else Tokens(device, user)

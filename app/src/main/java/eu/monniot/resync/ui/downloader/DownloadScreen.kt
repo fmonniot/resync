@@ -3,13 +3,14 @@ package eu.monniot.resync.ui.downloader
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
 import android.util.Log
 import android.webkit.WebView
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,6 +131,12 @@ fun DownloadScreen(
                 storyId,
                 chapterId
             )
+            is DownloadState.ExperimentalRmUpload -> {
+                ExperimentalRmApiWarning(
+                    onAccept = state.onAccept,
+                    onRefuse = state.onRefuse
+                )
+            }
             DownloadState.BuildingAndUploading -> Text("Uploading to the reMarkable Cloud")
             DownloadState.Done -> Text("The story is now available on your tablet")
         }
@@ -295,8 +302,6 @@ suspend fun downloadLogic(
 
     } // end of multiple chapters flow
 
-    setState(DownloadState.BuildingAndUploading)
-
     // Make sure that we put the chapters in order
     chaptersInEpub.sortBy { it.num }
 
@@ -314,11 +319,36 @@ suspend fun downloadLogic(
             Log.d(TAG, "Upload to reMarkable cloud directly")
             val tokens = preferencesManager.readCurrentAccount().tokens
 
+
+
             if (tokens == null) {
                 // TODO save epub for later and display it in the LauncherActivity
                 // Also maybe have a custom screen to tell the user what happened ?
             } else {
                 val rmCloud = RmClient(tokens)
+
+                rmCloud.refreshUserToken()
+
+                if (rmCloud.clientTokens.is15Account()) {
+                    val choice = CompletableDeferred<Boolean>()
+
+                    setState(DownloadState.ExperimentalRmUpload(
+                        onAccept = { choice.complete(true) },
+                        onRefuse = { choice.complete(false) }
+                    ))
+
+                    val userChoice = choice.await()
+
+                    if (!userChoice) {
+                        // If the user doesn't want to use the experimental API,
+                        // return early and do not upload the file
+                        return
+                    }
+
+                } else {
+                    setState(DownloadState.BuildingAndUploading)
+                }
+
                 rmCloud.uploadEpub(fileName, epub)
             }
 
@@ -419,6 +449,11 @@ sealed interface DownloadState {
     ) : DownloadState
 
     data class Error(val throwable: Throwable) : DownloadState
+
+    data class ExperimentalRmUpload(
+        val onAccept: () -> Unit,
+        val onRefuse: () -> Unit,
+    ) : DownloadState
 
     object BuildingAndUploading : DownloadState
 
@@ -767,6 +802,68 @@ fun DisplayDownloadErrorPreview() {
             storyId = StoryId(27855042),
             chapterId = ChapterId(68198782),
             driverType = DriverType.ArchiveOfOurOwn
+        )
+    }
+}
+
+@Composable
+fun ExperimentalRmApiWarning(onAccept: () -> Unit, onRefuse: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        Icon(
+            Icons.Rounded.Warning,
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .aspectRatio(1f)
+                .padding(bottom = 24.dp),
+            contentDescription = "Warn icon",
+            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.18f)
+        )
+
+        Text("Your account uses a newer version of the Cloud interface. " +
+                "This application hasn't been thoroughly tested with it and as " +
+                "a result may result in instability or loss of data on your " +
+                "reMarkable account.", textAlign = TextAlign.Justify
+        )
+
+        Text("If you do not feel comfortable with these danger, we recommend " +
+                "to use the Android Share option in the settings instead.",
+            modifier = Modifier.padding(top = 8.dp),
+            textAlign = TextAlign.Justify
+        )
+
+        Row(horizontalArrangement = Arrangement.End,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 32.dp)) {
+
+            OutlinedButton(onClick = onRefuse) {
+                Text("Cancel")
+            }
+
+            Button(onClick = onAccept, modifier = Modifier.padding(start = 8.dp)) {
+                Text("Accept")
+            }
+        }
+    }
+}
+
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+fun ExperimentalRmApiWarningPreview() {
+    ReSyncTheme {
+        ExperimentalRmApiWarning(
+            onAccept = {}, onRefuse = {}
         )
     }
 }
