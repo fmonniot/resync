@@ -20,7 +20,7 @@ android {
         // minSdkVersion <= targetSdkVersion <= compileSdkVersion
         minSdkVersion 30
         targetSdkVersion 32
-        compileSdkVersion 33
+        compileSdkVersion 34
 
         applicationId "eu.monniot.resync"
         versionCode 1
@@ -46,6 +46,7 @@ android {
     }
     buildFeatures {
         compose true
+        buildConfig true
     }
     composeOptions {
         kotlinCompilerExtensionVersion '1.3.0-beta01'
