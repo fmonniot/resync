@@ -49,6 +49,7 @@ android {
         buildConfig true
     }
     composeOptions {
+        kotlinCompilerVersion '1.9.10'
         kotlinCompilerExtensionVersion '1.5.3'
     }
 
