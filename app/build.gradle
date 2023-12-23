@@ -67,7 +67,7 @@ repositories {
 
 dependencies {
     // Force usage of the maven central version, won't be required once compose:ui-tooling uses it
-    implementation 'org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.3.6'
+    implementation 'org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.3.7'
 
     def room_version = "2.6.1"
 
