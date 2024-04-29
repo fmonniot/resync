@@ -1,6 +1,6 @@
 # reSync
 
-An Android application to synchronize fanfiction.net story (through links) to the reMarkable Cloud.
+An Android application to synchronize fanfiction.net and archiveofourown.com story (through links) to the reMarkable Cloud.
 
 
 ## Interesting Links
@@ -14,3 +14,7 @@ what is going on (in no particular order).
 - https://developer.android.com/topic/security/data#kotlin
 - https://blog.thefuntasty.com/from-custom-view-to-jetpack-compose-5a95e8d76a9a
 - https://google.github.io/accompanist/swiperefresh/
+
+And some links I used for stuff not related to Android
+- https://lottiefiles.com/782-check-mark-success
+- https://github.com/splitbrain/ReMarkableAPI/wiki/Storage

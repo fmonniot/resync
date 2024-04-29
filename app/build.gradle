@@ -19,7 +19,7 @@ android {
     defaultConfig {
         // minSdkVersion <= targetSdkVersion <= compileSdk
         minSdkVersion 30
-        targetSdkVersion 33 // Waiting for newer robolectric release to update
+        targetSdkVersion 34 // Waiting for newer robolectric release to update
         compileSdk 34
 
         applicationId "eu.monniot.resync"
@@ -49,7 +49,7 @@ android {
         buildConfig true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion '1.5.3'
+        kotlinCompilerExtensionVersion '1.5.12'
     }
 
     testOptions {
