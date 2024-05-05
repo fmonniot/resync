@@ -405,14 +405,14 @@ fun parseIndex(index: String): List<Entry> {
 
     val entries = mutableListOf<Entry>()
 
-    sequence.forEach { entries.add(parseEntry(it)) }
+    //sequence.forEach { entries.add(parseEntry(it)) }
 
     return entries.toList()
 }
 
-fun parseEntry(line: String): Entry {
-    return TODO()
-}
+//fun parseEntry(_line: String): Entry {
+//    return TODO()
+//}
 
 fun buildIndex(entries: List<Entry>): ByteArray {
     val sb = java.lang.StringBuilder()

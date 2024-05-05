@@ -94,7 +94,7 @@ fun TestingSavingAnimation() {
                     "done" -> {
                         DeterminateProgress(
                             modifier = progressModifier,
-                            outcome = ProgressOutcome.Success, // Depends on the upload result
+                            //outcome = ProgressOutcome.Success, // Depends on the upload result
                             angles = angles
                         )
                     }
@@ -175,7 +175,7 @@ enum class ProgressState {
 @Composable
 fun DeterminateProgress(
     angles: Angles,
-    outcome: ProgressOutcome,
+    //outcome: ProgressOutcome,
     modifier: Modifier = Modifier,
 ) {
     val color: Color = MaterialTheme.colors.primary
@@ -185,7 +185,7 @@ fun DeterminateProgress(
         Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Square)
     }
 
-    var arcDimen by remember { mutableStateOf(0f) }
+    var arcDimen by remember { mutableFloatStateOf(0f) }
     var currentState by remember { mutableStateOf(ProgressState.Initialized) }
     val transition = updateTransition(currentState, "progress-transition")
 
@@ -285,7 +285,7 @@ fun CheckmarkAnimationPreview() {
         Box(Modifier.size(128.dp)) {
             DeterminateProgress(
                 Angles(147f, 10f),
-                ProgressOutcome.Success,
+                //ProgressOutcome.Success,
                 modifier = Modifier
                     .aspectRatio(1f)
                     .background(Color.DarkGray)
@@ -346,7 +346,7 @@ fun IndeterminateProgress(
         infiniteRepeatable(
             animation = keyframes {
                 durationMillis = HeadAndTailAnimationDuration + HeadAndTailDelayDuration
-                0f at 0 with CircularEasing
+                0f at 0 using CircularEasing
                 JumpRotationAngle at HeadAndTailAnimationDuration
             }
         )
@@ -358,7 +358,7 @@ fun IndeterminateProgress(
         infiniteRepeatable(
             animation = keyframes {
                 durationMillis = HeadAndTailAnimationDuration + HeadAndTailDelayDuration
-                0f at HeadAndTailDelayDuration with CircularEasing
+                0f at HeadAndTailDelayDuration using CircularEasing
                 JumpRotationAngle at durationMillis
             }
         )
@@ -377,7 +377,7 @@ fun IndeterminateProgress(
         val sweep = abs(endAngle - startAngle)
 
         // Offset by the constant offset and the per rotation offset
-        val startAngle = startAngle + StartAngleOffset + currentRotationAngleOffset + baseRotation
+        @Suppress("NAME_SHADOWING") val startAngle = startAngle + StartAngleOffset + currentRotationAngleOffset + baseRotation
 
 
         //// fun drawIndeterminateCircularIndicator

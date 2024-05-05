@@ -8,9 +8,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.tooling.preview.Preview
@@ -139,14 +144,10 @@ fun ConsolidateView(
                 }
             ) {
 
-                SwipeRefresh(
-                    modifier = Modifier.fillMaxWidth(),
-                    state = rememberSwipeRefreshState(refreshing),
-                    onRefresh = onRefresh,
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                val pullRefreshState = rememberPullRefreshState(refreshing, onRefresh)
+
+                Box(Modifier.pullRefresh(pullRefreshState)) {
+                    LazyColumn(Modifier.fillMaxWidth()) {
                         if (documents.isEmpty()) {
                             // TODO Fill max height, otherwise the pull is hard to do
                             // (and you have to know the trick)
@@ -176,6 +177,8 @@ fun ConsolidateView(
                             }
                         }
                     }
+
+                    PullRefreshIndicator(refreshing, pullRefreshState, Modifier.align(Alignment.TopCenter))
                 }
             }
         }
@@ -234,14 +237,14 @@ fun @Composable ColumnScope.DocumentBottomSheetView(document: GroupedDocument) {
             },
         icon = {
             Icon(
-                Icons.Rounded.KeyboardArrowRight,
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = "Consolidate the story",
                 tint = MaterialTheme.colors.onPrimary
             )
         },
         trailing = {
             Icon(
-                Icons.Rounded.KeyboardArrowLeft,
+                Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
                 contentDescription = "Consolidate the story",
                 tint = MaterialTheme.colors.onPrimary
             )
@@ -317,11 +320,13 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
+    /*
     fun consolidate(story: String) {
         viewModelScope.launch {
 
         }
     }
+    */
 
     companion object {
         fun group(documents: List<Document>): List<GroupedDocument> {
