@@ -77,7 +77,7 @@ dependencies {
 
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'com.google.android.material:material:1.12.0'
     implementation "com.google.accompanist:accompanist-swiperefresh:0.34.0"
     implementation "androidx.compose.ui:ui:1.6.7"
     implementation "androidx.compose.material:material:1.6.7"
