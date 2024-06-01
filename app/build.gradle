@@ -76,14 +76,17 @@ dependencies {
     implementation "androidx.room:room-ktx:$room_version"
 
     implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
     implementation "com.google.accompanist:accompanist-swiperefresh:0.34.0"
     implementation "androidx.compose.ui:ui:1.6.7"
     implementation "androidx.compose.material:material:1.6.7"
     implementation "androidx.compose.ui:ui-tooling:1.6.7"
     //implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.4.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.1'
     implementation 'androidx.activity:activity-compose:1.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
@@ -100,7 +103,7 @@ dependencies {
     implementation 'org.slf4j:slf4j-android:1.7.36'
 
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.3-native-mt'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
     testImplementation 'org.robolectric:robolectric:4.12.2'
 
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
