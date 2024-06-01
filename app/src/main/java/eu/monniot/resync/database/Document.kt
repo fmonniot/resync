@@ -45,7 +45,7 @@ interface DocumentsDao {
     suspend fun delete(item: Document)
 }
 
-@Database(entities = [Document::class], version = 1)
+@Database(entities = [Document::class], version = 1, exportSchema = false)
 abstract class RemarkableDatabase : RoomDatabase() {
 
     abstract fun documentsDao(): DocumentsDao
