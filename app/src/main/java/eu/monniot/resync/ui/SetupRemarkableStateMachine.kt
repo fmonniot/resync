@@ -192,7 +192,7 @@ fun EnterCode(
                     }
                 },
                 keyboardOptions = KeyboardOptions(
-                    autoCorrect = false,
+                    autoCorrectEnabled = false,
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Done
                 ),
