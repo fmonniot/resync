@@ -20,7 +20,7 @@ android {
     defaultConfig {
         // minSdkVersion <= targetSdkVersion <= compileSdk
         minSdkVersion 30
-        targetSdkVersion 34 // Waiting for newer robolectric release to update
+        targetSdkVersion 35
         compileSdk 34
 
         applicationId "eu.monniot.resync"
@@ -76,9 +76,6 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
-    implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'com.google.android.material:material:1.12.0'
     implementation "com.google.accompanist:accompanist-swiperefresh:0.36.0"
 
 
@@ -91,7 +88,6 @@ dependencies {
     implementation "androidx.compose.material:material"
     implementation "androidx.compose.material:material-icons-core"
     implementation "androidx.compose.ui:ui-tooling"
-    //implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.4.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7'
     implementation 'androidx.activity:activity-compose:1.9.3'
 
