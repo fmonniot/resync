@@ -79,7 +79,7 @@ dependencies {
     implementation "com.google.accompanist:accompanist-swiperefresh:0.36.0"
 
 
-    Dependency composeBom = platform('androidx.compose:compose-bom:2025.02.00')
+    Dependency composeBom = platform('androidx.compose:compose-bom:2025.03.00')
     implementation composeBom
     testImplementation composeBom
     androidTestImplementation composeBom
