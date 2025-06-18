@@ -67,7 +67,7 @@ dependencies {
     // Force usage of the maven central version, won't be required once compose:ui-tooling uses it
     implementation 'org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.4.0'
 
-    def room_version = "2.7.1"
+    def room_version = "2.7.2"
 
     ksp "androidx.room:room-compiler:$room_version"
     implementation "androidx.room:room-runtime:$room_version"
