@@ -62,7 +62,7 @@ abstract class RemarkableDatabase : RoomDatabase() {
                         context.applicationContext,
                         RemarkableDatabase::class.java,
                         "remarkable_database"
-                    ).fallbackToDestructiveMigration()
+                    ).fallbackToDestructiveMigration(false)
                         .build()
                     INSTANCE = instance
                 }
