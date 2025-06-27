@@ -188,10 +188,10 @@ fun ConsolidateView(
 // The ColumnScope received isn't used, but I do want it to have the
 // compiler remind me that this function needs to be within a vertical
 // alignment (i.e. a Column).
-@Suppress("unused")
+@Suppress("UnusedReceiverParameter")
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun @Composable ColumnScope.DocumentBottomSheetView(document: GroupedDocument) {
+fun ColumnScope.DocumentBottomSheetView(document: GroupedDocument) {
 
     ListItem(
         text = {
