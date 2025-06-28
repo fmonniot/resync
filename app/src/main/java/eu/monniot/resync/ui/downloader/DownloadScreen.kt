@@ -389,7 +389,7 @@ suspend fun downloadLogic(
                 flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
 
-            startActivity(context, Intent.createChooser(shareIntent, "Share Story"), null)
+            context.startActivity(Intent.createChooser(shareIntent, "Share Story"), null)
         }
     }
 }
