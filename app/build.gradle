@@ -20,8 +20,8 @@ android {
     defaultConfig {
         // minSdkVersion <= targetSdkVersion <= compileSdk
         minSdkVersion 30
-        targetSdkVersion 35
-        compileSdk = 36
+        targetSdkVersion 36
+        compileSdk = 37
 
         applicationId "eu.monniot.resync"
         versionCode 1
