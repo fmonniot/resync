@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'com.google.devtools.ksp'
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.21'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.4.10'
 }
 
 android {
@@ -20,7 +20,7 @@ android {
     defaultConfig {
         // minSdkVersion <= targetSdkVersion <= compileSdk
         minSdkVersion 30
-        targetSdkVersion 36
+        targetSdkVersion 35
         compileSdk = 37
 
         applicationId "eu.monniot.resync"
@@ -65,7 +65,7 @@ repositories {
 
 dependencies {
     // Force usage of the maven central version, won't be required once compose:ui-tooling uses it
-    implementation 'org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.4.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-collections-immutable-jvm:0.5.1'
 
     def room_version = "2.8.4"
 
@@ -79,7 +79,7 @@ dependencies {
     implementation "com.google.accompanist:accompanist-swiperefresh:0.36.0"
 
 
-    Dependency composeBom = platform('androidx.compose:compose-bom:2026.05.01')
+    Dependency composeBom = platform('androidx.compose:compose-bom:2026.06.01')
     implementation composeBom
     testImplementation composeBom
     androidTestImplementation composeBom
@@ -92,13 +92,13 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.13.0'
 
 
-    implementation 'com.squareup.okhttp3:okhttp:5.3.2'
-    implementation 'com.squareup.okhttp3:logging-interceptor:5.3.2'
+    implementation 'com.squareup.okhttp3:okhttp:5.4.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:5.4.0'
     implementation 'com.squareup.retrofit2:retrofit:3.0.0'
     implementation 'com.squareup.retrofit2:converter-moshi:3.0.0'
     implementation 'com.squareup.retrofit2:converter-scalars:3.0.0'
     implementation "androidx.security:security-crypto:1.1.0"
-    implementation 'org.jsoup:jsoup:1.22.2'
+    implementation 'org.jsoup:jsoup:1.23.1'
 
     implementation('nl.siegmann.epublib:epublib-core:3.1') {
         exclude group: 'org.slf4j'
@@ -108,7 +108,7 @@ dependencies {
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0'
-    testImplementation 'org.robolectric:robolectric:4.16.1'
+    testImplementation 'org.robolectric:robolectric:4.17-beta-2'
 
     androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
