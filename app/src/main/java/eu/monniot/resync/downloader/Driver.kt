@@ -6,6 +6,7 @@ import android.os.Environment
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import eu.monniot.resync.BuildConfig
 import kotlinx.coroutines.*
 import java.io.File
 
@@ -33,7 +34,7 @@ abstract class Driver {
         // is already attached to this exact view.
         if (this.view === view) return
 
-        WebView.setWebContentsDebuggingEnabled(true);
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
         this.view = view
         view.settings.javaScriptEnabled = true
         view.webViewClient = makeWebViewClient()
