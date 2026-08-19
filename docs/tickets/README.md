@@ -6,7 +6,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 ## High
 
 - [Greedy `<hr>` regex deletes chapter content](epub-hr-regex-greedy.md)
-- [FileName.parse fails on titles containing a dash](filename-parse-dashes.md)
 
 ## Medium
 
@@ -27,5 +26,4 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## Suggested order
 
-`epub-hr-regex-greedy` and `filename-parse-dashes` are small, self-contained and
-testable — good first cut.
+`epub-hr-regex-greedy` is small, self-contained and testable — good first cut.
