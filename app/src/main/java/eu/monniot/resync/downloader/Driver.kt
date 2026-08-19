@@ -27,6 +27,12 @@ abstract class Driver {
 
     @SuppressLint("SetJavaScriptEnabled")
     fun installGrabber(view: WebView) {
+        // Idempotent: AndroidView's update lambda can be invoked again for the same
+        // WebView instance (e.g. on unrelated recompositions). Re-running the setup
+        // below would needlessly reassign the webViewClient; skip it if this driver
+        // is already attached to this exact view.
+        if (this.view === view) return
+
         WebView.setWebContentsDebuggingEnabled(true);
         this.view = view
         view.settings.javaScriptEnabled = true
