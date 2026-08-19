@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -133,8 +134,7 @@ fun DownloadScreen(
             )
             is DownloadState.ExperimentalRmUpload -> {
                 ExperimentalRmApiWarning(
-                    onAccept = state.onAccept,
-                    onRefuse = state.onRefuse
+                    onDismiss = state.onDismiss
                 )
             }
             DownloadState.BuildingAndUploading -> Text("Uploading to the reMarkable Cloud")
@@ -330,21 +330,16 @@ suspend fun downloadLogic(
                 rmCloud.refreshUserToken()
 
                 if (rmCloud.clientTokens.is15Account()) {
-                    val choice = CompletableDeferred<Boolean>()
+                    val dismissed = CompletableDeferred<Unit>()
 
                     setState(DownloadState.ExperimentalRmUpload(
-                        onAccept = { choice.complete(true) },
-                        onRefuse = { choice.complete(false) }
+                        onDismiss = { dismissed.complete(Unit) }
                     ))
 
-                    val userChoice = choice.await()
+                    dismissed.await()
 
-                    if (!userChoice) {
-                        // If the user doesn't want to use the experimental API,
-                        // return early and do not upload the file
-                        return
-                    }
-
+                    // Sync 1.5 upload isn't implemented, do not attempt the upload
+                    return
                 } else {
                     setState(DownloadState.BuildingAndUploading)
                 }
@@ -451,8 +446,7 @@ sealed interface DownloadState {
     data class Error(val throwable: Throwable) : DownloadState
 
     data class ExperimentalRmUpload(
-        val onAccept: () -> Unit,
-        val onRefuse: () -> Unit,
+        val onDismiss: () -> Unit,
     ) : DownloadState
 
     object BuildingAndUploading : DownloadState
@@ -807,7 +801,7 @@ fun DisplayDownloadErrorPreview() {
 }
 
 @Composable
-fun ExperimentalRmApiWarning(onAccept: () -> Unit, onRefuse: () -> Unit) {
+fun ExperimentalRmApiWarning(onDismiss: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -826,14 +820,15 @@ fun ExperimentalRmApiWarning(onAccept: () -> Unit, onRefuse: () -> Unit) {
             tint = MaterialTheme.colors.onSurface.copy(alpha = 0.18f)
         )
 
-        Text("Your account uses a newer version of the Cloud interface. " +
-                "This application hasn't been thoroughly tested with it and as " +
-                "a result may result in instability or loss of data on your " +
-                "reMarkable account.", textAlign = TextAlign.Justify
+        Text("Sync 1.5 accounts aren't supported yet", fontWeight = FontWeight.Bold)
+
+        Text("Your account uses a newer version of the reMarkable Cloud interface. " +
+                "Support for it was removed while we rework the implementation.",
+            modifier = Modifier.padding(top = 8.dp),
+            textAlign = TextAlign.Justify
         )
 
-        Text("If you do not feel comfortable with these danger, we recommend " +
-                "to use the Android Share option in the settings instead.",
+        Text("Please use the \"Share\" upload method in Settings instead.",
             modifier = Modifier.padding(top = 8.dp),
             textAlign = TextAlign.Justify
         )
@@ -843,12 +838,8 @@ fun ExperimentalRmApiWarning(onAccept: () -> Unit, onRefuse: () -> Unit) {
                 .fillMaxWidth()
                 .padding(top = 32.dp)) {
 
-            OutlinedButton(onClick = onRefuse) {
-                Text("Cancel")
-            }
-
-            Button(onClick = onAccept, modifier = Modifier.padding(start = 8.dp)) {
-                Text("Accept")
+            Button(onClick = onDismiss) {
+                Text("OK")
             }
         }
     }
@@ -863,7 +854,7 @@ fun ExperimentalRmApiWarning(onAccept: () -> Unit, onRefuse: () -> Unit) {
 fun ExperimentalRmApiWarningPreview() {
     ReSyncTheme {
         ExperimentalRmApiWarning(
-            onAccept = {}, onRefuse = {}
+            onDismiss = {}
         )
     }
 }

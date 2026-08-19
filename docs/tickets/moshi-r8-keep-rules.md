@@ -6,7 +6,7 @@
 ## Problem
 
 The reMarkable API models (`RegistrationPayload`, `Document`, `UploadRequestPayload`,
-`BlobStorageRequest/Response`, `JwtPayload`, …) are plain Kotlin data classes parsed by
+`JwtPayload`, …) are plain Kotlin data classes parsed by
 `Moshi.Builder().build()` — the reflective `ClassJsonAdapter` path. Neither `moshi-kotlin`
 nor `moshi-kotlin-codegen` is a dependency, so field names come straight from the JVM
 fields.

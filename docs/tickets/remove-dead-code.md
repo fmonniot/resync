@@ -10,8 +10,6 @@
   that will throw `NotImplementedError` if anything ever calls it. It has no callers.
 - `ExampleUnitTest.kt` and `ExampleInstrumentedTest.kt` are still the Android Studio
   template stubs (`assertEquals(4, 2 + 2)`).
-- `rmcloud/RmClient.kt:413` — commented-out `parseEntry` (tracked separately in
-  `docs/tickets/sync15-root-index-truncation.md`, delete or implement there).
 - `ui/launcher/ConsolidateScreen.kt:323` — commented-out `consolidate(story:)`.
 
 ## Proposed fix

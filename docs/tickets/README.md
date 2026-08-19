@@ -3,14 +3,8 @@
 One file per piece of work. Each ticket states the problem with file references, a proposed
 fix, and acceptance criteria. Priorities are relative to each other, not absolute.
 
-## Critical
-
-- [Sync 1.5 upload truncates the reMarkable root index](sync15-root-index-truncation.md) —
-  `parseIndex` is a stub, so a 1.5 upload rewrites the root with only the new document.
-
 ## High
 
-- [BlobDoc.withEntry builds the wrong container entry](blobdoc-entry-hash.md)
 - [Newly paired account is never selected as current](first-run-account-index.md)
 - [Download reports success when no upload happened](silent-upload-success.md)
 - [Greedy `<hr>` regex deletes chapter content](epub-hr-regex-greedy.md)
@@ -39,5 +33,3 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 `epub-hr-regex-greedy`, `filename-parse-dashes`, `silent-upload-success` and
 `first-run-account-index` are small, self-contained and testable — good first cut.
-`sync15-root-index-truncation` and `blobdoc-entry-hash` should be done together, and
-`pure-logic-test-coverage` is what makes both of them verifiable.
