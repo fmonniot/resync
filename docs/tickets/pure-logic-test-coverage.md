@@ -22,14 +22,14 @@ Two of the bugs filed alongside this ticket
 1. Extract the HTML sanitising in `Book.addChapter` into a pure function, free of
    `android.text.TextUtils`, and test it directly.
 2. Add `FileName.make` ↔ `parse` round-trip tests.
-3. Act on the existing TODO at `DownloadScreen.kt:312` — inject `PreferencesManager` (and
-   the upload target) into `downloadLogic` instead of constructing them from `Context`. That
-   makes the whole state-machine flow — chapter selection, rate-limit retry, the
-   no-account path — unit-testable with `kotlinx-coroutines-test`, which is already a
-   dependency.
+3. `downloadLogic` still constructs its `Context`-dependent bits (`context.filesDir`,
+   `FileProvider`) inline. Factor those out so the chapter-selection and rate-limit-retry
+   state machine can be driven in a unit test with a fake driver, using
+   `kotlinx-coroutines-test`, which is already a dependency.
 
 ## Acceptance criteria
 
 - [ ] `makeEpub`'s content transformation is tested without an Android runtime.
-- [ ] `downloadLogic` can be driven in a unit test with a fake driver and fake preferences.
+- [ ] `downloadLogic`'s chapter-selection/retry state machine can be driven in a unit test
+      with a fake driver.
 - [ ] The bugs listed above each land with a regression test.

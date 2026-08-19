@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import eu.monniot.resync.database.Document
 import eu.monniot.resync.database.DocumentsDao
@@ -33,8 +32,6 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import eu.monniot.resync.FileName
-import eu.monniot.resync.rmcloud.PreferencesManager
-import eu.monniot.resync.rmcloud.RmClient
 import kotlinx.coroutines.flow.*
 
 // TODO Add a way to group together existing stories.
@@ -281,7 +278,6 @@ fun DocumentBottomSheetViewPreview() {
 class ConsolidateViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dao: DocumentsDao
-    private val rmCloud: RmClient?
     private val isRefreshing = MutableStateFlow(false)
     private val isInitialized = mutableStateOf(ViewState.NotInitialized)
 
@@ -295,10 +291,7 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     init {
         val db = RemarkableDatabase.getInstance(application)
 
-        val tokens = PreferencesManager.create(application).readCurrentAccount().tokens
-        rmCloud = tokens?.let { RmClient(it) }
         dao = db.documentsDao()
-
 
         // TODO Load the initialized state from preferences
         //  (a parent have been set, null if root have been selected)
@@ -307,17 +300,10 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
         documents = dao.getAll().map { group(it) }
     }
 
+    // TODO Re-entry point for a future cloud sync: pull the remote document list and
+    // upsert it into `dao`, the way `RmClient.listDocuments()` used to before the direct
+    // reMarkable Cloud integration was removed.
     fun refreshDocuments() {
-        viewModelScope.launch {
-            if (rmCloud != null) {
-                isRefreshing.emit(true)
-                syncRemoteFiles(rmCloud, dao)
-                isRefreshing.emit(false)
-            } else {
-                // Show a banner notification saying there aren't any
-                // remarkable account set up. Somehow.
-            }
-        }
     }
 
     /*
@@ -353,14 +339,6 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
                 }
                 .filter { it.chapters.size > 1 }
                 .toList()
-        }
-
-        suspend fun syncRemoteFiles(client: RmClient, dao: DocumentsDao) {
-            val docs = client.listDocuments().map { Document.fromApi(it) }
-
-            for (doc in docs) {
-                dao.upsert(doc)
-            }
         }
     }
 }

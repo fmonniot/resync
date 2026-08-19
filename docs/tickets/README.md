@@ -5,8 +5,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## High
 
-- [Newly paired account is never selected as current](first-run-account-index.md)
-- [Download reports success when no upload happened](silent-upload-success.md)
 - [Greedy `<hr>` regex deletes chapter content](epub-hr-regex-greedy.md)
 - [FileName.parse fails on titles containing a dash](filename-parse-dashes.md)
 
@@ -14,8 +12,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 - [Driver is recreated on every recomposition](remember-driver-instance.md)
 - [WebView contents debugging enabled in release builds](webview-debugging-release-builds.md)
-- [HTTP logging writes tokens to logcat](http-logging-leaks-tokens.md)
-- [Moshi reflection + R8 will break JSON parsing in release](moshi-r8-keep-rules.md)
 - [Release build config is machine-specific and unversioned](release-build-configuration.md)
 - [CI only runs unit tests](ci-build-and-lint.md)
 - [Pure logic outside the scrapers has no test coverage](pure-logic-test-coverage.md)
@@ -31,5 +27,5 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## Suggested order
 
-`epub-hr-regex-greedy`, `filename-parse-dashes`, `silent-upload-success` and
-`first-run-account-index` are small, self-contained and testable — good first cut.
+`epub-hr-regex-greedy` and `filename-parse-dashes` are small, self-contained and
+testable — good first cut.

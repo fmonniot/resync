@@ -9,14 +9,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -27,8 +24,6 @@ import eu.monniot.resync.BuildConfig
 import eu.monniot.resync.FileName
 import eu.monniot.resync.downloader.*
 import eu.monniot.resync.makeEpub
-import eu.monniot.resync.rmcloud.PreferencesManager
-import eu.monniot.resync.rmcloud.RmClient
 import eu.monniot.resync.ui.KeepScreenOn
 import eu.monniot.resync.ui.ReSyncTheme
 import kotlinx.coroutines.CompletableDeferred
@@ -132,13 +127,6 @@ fun DownloadScreen(
                 storyId,
                 chapterId
             )
-            is DownloadState.ExperimentalRmUpload -> {
-                ExperimentalRmApiWarning(
-                    onDismiss = state.onDismiss
-                )
-            }
-            DownloadState.BuildingAndUploading -> Text("Uploading to the reMarkable Cloud")
-            DownloadState.Done -> Text("The story is now available on your tablet")
         }
     }
 }
@@ -309,84 +297,39 @@ suspend fun downloadLogic(
     val epub = makeEpub(chaptersInEpub)
     val fileName = FileName.make(chaptersInEpub, wholeStory)
 
-    // TODO Inject PreferencesManager as parameter
-    // Which means we will be able to test this function as unit test
-    // without mocking the android framework
-    val preferencesManager = PreferencesManager.create(context)
+    // Direct reMarkable Cloud upload was removed; Share (below) is currently the only
+    // upload path. A future reimplementation of the cloud integration plugs back in here.
+    Log.d(TAG, "Upload via Android Share")
+    // Read how to do so at https://developer.android.com/training/secure-file-sharing
+    // 1. Save the epub on file system
+    val epubFile = context.filesDir.resolve("epub/$fileName")
+    epubFile.parentFile?.mkdir()
+    epubFile.writeBytes(epub)
 
-    when (preferencesManager.readUploadMethod()) {
-        PreferencesManager.Companion.UploadMethod.Direct -> {
-            Log.d(TAG, "Upload to reMarkable cloud directly")
-            val tokens = preferencesManager.readCurrentAccount().tokens
+    // 2. Initiate intent to share epub file
+    val fileUri = FileProvider.getUriForFile(
+        context,
+        "eu.monniot.resync.fileprovider",
+        epubFile
+    )
 
+    val shareIntent: Intent = Intent().apply {
+        action = Intent.ACTION_SEND
+        type = "application/epub+zip"
 
+        clipData = ClipData(fileName.replace(".epub", ""),
+            arrayOf("application/epub+zip"),
+            ClipData.Item(fileUri))
 
-            if (tokens == null) {
-                // TODO save epub for later and display it in the LauncherActivity
-                // Also maybe have a custom screen to tell the user what happened ?
-            } else {
-                val rmCloud = RmClient(tokens)
+        // BC purposes, which isn't require for rm app (maybe)
+        putExtra(Intent.EXTRA_STREAM, fileUri)
 
-                rmCloud.refreshUserToken()
-
-                if (rmCloud.clientTokens.is15Account()) {
-                    val dismissed = CompletableDeferred<Unit>()
-
-                    setState(DownloadState.ExperimentalRmUpload(
-                        onDismiss = { dismissed.complete(Unit) }
-                    ))
-
-                    dismissed.await()
-
-                    // Sync 1.5 upload isn't implemented, do not attempt the upload
-                    return
-                } else {
-                    setState(DownloadState.BuildingAndUploading)
-                }
-
-                rmCloud.uploadEpub(fileName, epub)
-            }
-
-            setState(DownloadState.Done)
-
-            // Wait for the done animation to be complete
-            // The activity will be close once this function return
-            delay(1500)
-        }
-        PreferencesManager.Companion.UploadMethod.Share -> {
-            Log.d(TAG, "Upload via Android Share")
-            // Read how to do so at https://developer.android.com/training/secure-file-sharing
-            // 1. Save the epub on file system
-            val epubFile = context.filesDir.resolve("epub/$fileName")
-            epubFile.parentFile?.mkdir()
-            epubFile.writeBytes(epub)
-
-            // 2. Initiate intent to share epub file
-            val fileUri = FileProvider.getUriForFile(
-                context,
-                "eu.monniot.resync.fileprovider",
-                epubFile
-            )
-
-            val shareIntent: Intent = Intent().apply {
-                action = Intent.ACTION_SEND
-                type = "application/epub+zip"
-
-                clipData = ClipData(fileName.replace(".epub", ""),
-                    arrayOf("application/epub+zip"),
-                    ClipData.Item(fileUri))
-
-                // BC purposes, which isn't require for rm app (maybe)
-                putExtra(Intent.EXTRA_STREAM, fileUri)
-
-                putExtra(Intent.EXTRA_SUBJECT, "Sharing Story...")
-                putExtra(Intent.EXTRA_TEXT, "Sharing Story...")
-                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            }
-
-            context.startActivity(Intent.createChooser(shareIntent, "Share Story"), null)
-        }
+        putExtra(Intent.EXTRA_SUBJECT, "Sharing Story...")
+        putExtra(Intent.EXTRA_TEXT, "Sharing Story...")
+        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
     }
+
+    context.startActivity(Intent.createChooser(shareIntent, "Share Story"), null)
 }
 
 private suspend fun readWithRateLimit(
@@ -444,15 +387,6 @@ sealed interface DownloadState {
     ) : DownloadState
 
     data class Error(val throwable: Throwable) : DownloadState
-
-    data class ExperimentalRmUpload(
-        val onDismiss: () -> Unit,
-    ) : DownloadState
-
-    object BuildingAndUploading : DownloadState
-
-    // TODO Add remaining time until screen is removed
-    object Done : DownloadState
 }
 
 
@@ -800,61 +734,3 @@ fun DisplayDownloadErrorPreview() {
     }
 }
 
-@Composable
-fun ExperimentalRmApiWarning(onDismiss: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-        Icon(
-            Icons.Rounded.Warning,
-            modifier = Modifier
-                .fillMaxWidth(0.5f)
-                .aspectRatio(1f)
-                .padding(bottom = 24.dp),
-            contentDescription = "Warn icon",
-            tint = MaterialTheme.colors.onSurface.copy(alpha = 0.18f)
-        )
-
-        Text("Sync 1.5 accounts aren't supported yet", fontWeight = FontWeight.Bold)
-
-        Text("Your account uses a newer version of the reMarkable Cloud interface. " +
-                "Support for it was removed while we rework the implementation.",
-            modifier = Modifier.padding(top = 8.dp),
-            textAlign = TextAlign.Justify
-        )
-
-        Text("Please use the \"Share\" upload method in Settings instead.",
-            modifier = Modifier.padding(top = 8.dp),
-            textAlign = TextAlign.Justify
-        )
-
-        Row(horizontalArrangement = Arrangement.End,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 32.dp)) {
-
-            Button(onClick = onDismiss) {
-                Text("OK")
-            }
-        }
-    }
-}
-
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true
-)
-@Composable
-fun ExperimentalRmApiWarningPreview() {
-    ReSyncTheme {
-        ExperimentalRmApiWarning(
-            onDismiss = {}
-        )
-    }
-}
