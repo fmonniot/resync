@@ -13,21 +13,7 @@ data class Document(
     val name: String,
     val bookmarked: Boolean,
     val parent: String?
-) {
-
-    companion object {
-        fun fromApi(doc: eu.monniot.resync.rmcloud.Document): Document =
-            Document(
-                doc.ID,
-                doc.Version,
-                doc.Type,
-                doc.VissibleName,
-                doc.Bookmarked,
-                doc.Parent.ifBlank { null }
-            )
-
-    }
-}
+)
 
 
 @Dao

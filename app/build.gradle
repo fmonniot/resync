@@ -92,12 +92,6 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.13.0'
 
 
-    implementation 'com.squareup.okhttp3:okhttp:5.5.0'
-    implementation 'com.squareup.okhttp3:logging-interceptor:5.5.0'
-    implementation 'com.squareup.retrofit2:retrofit:3.0.0'
-    implementation 'com.squareup.retrofit2:converter-moshi:3.0.0'
-    implementation 'com.squareup.retrofit2:converter-scalars:3.0.0'
-    implementation "androidx.security:security-crypto:1.1.0"
     implementation 'org.jsoup:jsoup:1.23.1'
 
     implementation('nl.siegmann.epublib:epublib-core:3.1') {
