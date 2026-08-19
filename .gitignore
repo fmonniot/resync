@@ -54,7 +54,8 @@ captures/
 # Comment next line if keeping position of elements in Navigation Editor is relevant for you
 .idea/navEditor.xml
 
-.idea/ # Too much weird stuff I don't care to find out about
+# Too much weird stuff I don't care to find out about
+.idea/
 
 # Keystore files
 # Uncomment the following lines if you do not want to check your keystore files in.
