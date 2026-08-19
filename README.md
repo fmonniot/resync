@@ -17,4 +17,4 @@ what is going on (in no particular order).
 
 And some links I used for stuff not related to Android
 - https://lottiefiles.com/782-check-mark-success
-- https://github.com/splitbrain/ReMarkableAPI/wiki/Storage
+- https://github.com/ddvk/rmapi
