@@ -54,13 +54,13 @@ suspend fun makeEpub(chapterList: List<Chapter>): ByteArray {
     return bytes.toByteArray()
 }
 
-fun Book.addChapter(chapter: Chapter, insertTitle: Boolean) {
-    val chapterName = chapter.chapterName?.let { TextUtils.htmlEncode(it) } ?: ""
-    val title = if (insertTitle) {
-        "<h2>${chapterName}</h2><hr style=\"width:100%;margin: 0 10% 0 10%;\"></hr>"
-    } else ""
-
-    val innerHtml = chapter.content
+/**
+ * Cleans up chapter HTML so the reMarkable reader (and epublib) can render it correctly.
+ *
+ * Pure function (no Android dependency) so it can be unit tested directly on the JVM.
+ */
+fun sanitiseContent(html: String): String {
+    return html
         // The FF.Net extractor used a XML serializer to account for ff.net not being
         // rigorous with its xhtml. We need to remove that piece of metadata for readers
         // to be happy.
@@ -69,14 +69,29 @@ fun Book.addChapter(chapter: Chapter, insertTitle: Boolean) {
         // The epub reader (or perhaps the format) doesn't accepts unbreakable space so let's
         // remove them. And because many authors use the &nbsp;<br>&nbsp;<br>&nbsp sequence, which
         // results in in two open tag without closing one (<br><br>), we also make those
-        // self closing. Otherwise many readers will see the chapter as broken
+        // self closing. Otherwise many readers will see the chapter as broken.
+        // The regex is case-insensitive and tolerant of attributes/whitespace so that
+        // <br >, <BR>, <br/> and friends are all normalised the same way.
         .replace("&nbsp;", "")
-        .replace("<br>", "<br/>")
+        .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "<br/>")
         // Some authors uses break delimiter like "<hr size="1" noshade>". Unfortunately
         // the reMarkable reader doesn't know what to do with those and bails out. We replace
         // them with regular horizontal line instead.
         // Fix https://github.com/fmonniot/resync/issues/164
-        .replace(Regex("<hr.+>"), "<hr/>")
+        //
+        // The regex must not be greedy (`[^>]*` instead of `.+`) otherwise it swallows
+        // everything up to the *last* `>` on the line, which on jsoup-serialized HTML can
+        // span a lot of unrelated inline markup and silently delete chapter text.
+        .replace(Regex("<hr[^>]*>", RegexOption.IGNORE_CASE), "<hr/>")
+}
+
+fun Book.addChapter(chapter: Chapter, insertTitle: Boolean) {
+    val chapterName = chapter.chapterName?.let { TextUtils.htmlEncode(it) } ?: ""
+    val title = if (insertTitle) {
+        "<h2>${chapterName}</h2><hr style=\"width:100%;margin: 0 10% 0 10%;\"></hr>"
+    } else ""
+
+    val innerHtml = sanitiseContent(chapter.content)
 
     val content = """<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
