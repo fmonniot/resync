@@ -14,16 +14,18 @@ left in place for that.
 ## Commands
 
 ```bash
-./gradlew test                  # all unit tests (what CI runs)
+./gradlew test                  # all unit tests
 ./gradlew testDebugUnitTest     # debug-variant unit tests only
 ./gradlew testDebugUnitTest --tests "eu.monniot.resync.downloader.ArchiveOfOurOwnDriverTest"
 ./gradlew testDebugUnitTest --tests "*.ArchiveOfOurOwnDriverTest.parse_oneShotStory_firstChapter"
 ./gradlew assembleDebug         # build APK
+./gradlew lint                  # Android Lint (debug variant)
 ./gradlew installDebug          # build + install on a connected device/emulator
 ./gradlew connectedAndroidTest  # instrumented tests (needs a device; Room DB tests live here)
 ```
 
-There is no linter configured beyond the Kotlin compiler.
+CI (`.github/workflows/ci.yml`) runs `assembleDebug`, `lint`, and `test` on every push/PR to `main`.
+There is no other linter configured beyond Android Lint and the Kotlin compiler.
 
 Java 17 source/target, Gradle daemon toolchain is JDK 21 (`gradle/gradle-daemon-jvm.properties`).
 `assembleRelease` will fail on any machine but the owner's — `app/build.gradle` hardcodes an
