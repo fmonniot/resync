@@ -41,9 +41,11 @@ fun DownloadScreen(
 ) {
     val context = LocalContext.current
 
-    val driver = when (driverType) {
-        DriverType.ArchiveOfOurOwn -> ArchiveOfOurOwnDriver(context.filesDir)
-        DriverType.FanFictionNet -> FanFictionNetDriver(context.filesDir)
+    val driver = remember(driverType, context) {
+        when (driverType) {
+            DriverType.ArchiveOfOurOwn -> ArchiveOfOurOwnDriver(context.filesDir)
+            DriverType.FanFictionNet -> FanFictionNetDriver(context.filesDir)
+        }
     }
 
     val (state, setState) = remember {

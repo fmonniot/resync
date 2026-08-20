@@ -5,11 +5,9 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## High
 
-- [Greedy `<hr>` regex deletes chapter content](epub-hr-regex-greedy.md)
 
 ## Medium
 
-- [Driver is recreated on every recomposition](remember-driver-instance.md)
 - [WebView contents debugging enabled in release builds](webview-debugging-release-builds.md)
 - [Release build config is machine-specific and unversioned](release-build-configuration.md)
 - [CI only runs unit tests](ci-build-and-lint.md)
@@ -26,4 +24,3 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## Suggested order
 
-`epub-hr-regex-greedy` is small, self-contained and testable — good first cut.
