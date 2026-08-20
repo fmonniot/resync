@@ -8,7 +8,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## Medium
 
-- [CI only runs unit tests](ci-build-and-lint.md)
 
 ## Low / trivial
 
