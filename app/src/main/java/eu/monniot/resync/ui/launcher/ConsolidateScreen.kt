@@ -306,14 +306,6 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     fun refreshDocuments() {
     }
 
-    /*
-    fun consolidate(story: String) {
-        viewModelScope.launch {
-
-        }
-    }
-    */
-
     companion object {
         fun group(documents: List<Document>): List<GroupedDocument> {
             return documents.asSequence()
