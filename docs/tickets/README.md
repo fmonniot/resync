@@ -11,7 +11,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## Low / trivial
 
-- [Consolidate dependency versions into a version catalog](gradle-version-catalog.md)
 - [Comments contradict the code they describe](comment-drift.md)
 
 ## Suggested order
