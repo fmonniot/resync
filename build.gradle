@@ -1,19 +1,8 @@
-buildscript {
-
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-
-        classpath 'com.android.tools.build:gradle:9.4.0-rc01'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10'
-    }
-}
-
 plugins {
-    id 'com.google.devtools.ksp' version '2.3.11' apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.ksp) apply false
 }
 
 allprojects {
