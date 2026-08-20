@@ -5,7 +5,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## High
 
-- [FileName.parse fails on titles containing a dash](filename-parse-dashes.md)
 
 ## Medium
 
@@ -25,4 +24,3 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## Suggested order
 
-`filename-parse-dashes` is small, self-contained and testable — good first cut.
