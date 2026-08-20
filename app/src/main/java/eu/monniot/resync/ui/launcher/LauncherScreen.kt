@@ -13,13 +13,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Devices
 import eu.monniot.resync.ui.ReSyncTheme
 import eu.monniot.resync.ui.icons.LibraryBooks
-import eu.monniot.resync.ui.icons.Science
 
 
 enum class LauncherScreenItem(val sectionName: String, val icon: ImageVector) {
     Search("Search", Icons.Filled.Search),
     Consolidate("Consolidate", LibraryBooks),
-    Experimental("Experiments", Science),
     Settings("Settings", Icons.Default.Settings)
 }
 
@@ -36,7 +34,6 @@ fun LauncherScreen(
                 when (selectedItem) {
                     LauncherScreenItem.Search -> SearchStoryScreen()
                     LauncherScreenItem.Consolidate -> ConsolidateScreen()
-                    LauncherScreenItem.Experimental -> TestingSavingAnimation()
                     LauncherScreenItem.Settings -> SettingsScreen()
                 }
             }
@@ -56,19 +53,6 @@ fun LauncherScreen(
                     label = { Text(LauncherScreenItem.Consolidate.sectionName) },
                     selected = selectedItem == LauncherScreenItem.Consolidate,
                     onClick = { selectedItem = LauncherScreenItem.Consolidate }
-                )
-
-                // TODO Only in debug mode
-                BottomNavigationItem(
-                    icon = {
-                        Icon(
-                            LauncherScreenItem.Experimental.icon,
-                            contentDescription = null
-                        )
-                    },
-                    label = { Text(LauncherScreenItem.Experimental.sectionName) },
-                    selected = selectedItem == LauncherScreenItem.Experimental,
-                    onClick = { selectedItem = LauncherScreenItem.Experimental }
                 )
 
                 BottomNavigationItem(
@@ -96,19 +80,6 @@ fun LauncherSearchPreview() {
     }
 }
 
-
-@Preview(
-    showBackground = true,
-    device = Devices.PIXEL_3,
-    showSystemUi = true,
-    name = "Launcher - Experimental - Pixel 3"
-)
-@Composable
-fun LauncherExperimentalPreview() {
-    ReSyncTheme {
-        LauncherScreen(LauncherScreenItem.Experimental)
-    }
-}
 
 @Preview(
     showBackground = true,
