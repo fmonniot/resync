@@ -9,7 +9,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 ## Medium
 
 - [CI only runs unit tests](ci-build-and-lint.md)
-- [Pure logic outside the scrapers has no test coverage](pure-logic-test-coverage.md)
 
 ## Low / trivial
 

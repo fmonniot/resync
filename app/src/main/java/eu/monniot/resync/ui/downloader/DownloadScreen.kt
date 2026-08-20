@@ -152,6 +152,70 @@ suspend fun downloadLogic(
 
     // initial state is FetchingFirstChapter, no need to re-set it here
     val initialChapter = driver.readChapter(storyId, chapterId)
+
+    val (chaptersInEpub, wholeStory) = selectChaptersToDownload(
+        initialChapter,
+        driverType,
+        driver,
+        setState,
+    )
+
+    // Build the epub file and its name
+    val epub = makeEpub(chaptersInEpub)
+    val fileName = FileName.make(chaptersInEpub, wholeStory)
+
+    // Direct reMarkable Cloud upload was removed; Share (below) is currently the only
+    // upload path. A future reimplementation of the cloud integration plugs back in here.
+    Log.d(TAG, "Upload via Android Share")
+    // Read how to do so at https://developer.android.com/training/secure-file-sharing
+    // 1. Save the epub on file system
+    val epubFile = context.filesDir.resolve("epub/$fileName")
+    epubFile.parentFile?.mkdir()
+    epubFile.writeBytes(epub)
+
+    // 2. Initiate intent to share epub file
+    val fileUri = FileProvider.getUriForFile(
+        context,
+        "eu.monniot.resync.fileprovider",
+        epubFile
+    )
+
+    val shareIntent: Intent = Intent().apply {
+        action = Intent.ACTION_SEND
+        type = "application/epub+zip"
+
+        clipData = ClipData(fileName.replace(".epub", ""),
+            arrayOf("application/epub+zip"),
+            ClipData.Item(fileUri))
+
+        // BC purposes, which isn't require for rm app (maybe)
+        putExtra(Intent.EXTRA_STREAM, fileUri)
+
+        putExtra(Intent.EXTRA_SUBJECT, "Sharing Story...")
+        putExtra(Intent.EXTRA_TEXT, "Sharing Story...")
+        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    }
+
+    context.startActivity(Intent.createChooser(shareIntent, "Share Story"), null)
+}
+
+/**
+ * The chapter-selection/rate-limit-retry state machine, factored out of [downloadLogic] so it
+ * can be driven in a unit test with a fake [ChapterReader] instead of a WebView-backed [Driver]
+ * and a real [Context]. Given the already-fetched first chapter, this either returns it as-is
+ * (one-shot stories), or asks the user (via [setState]/[DownloadState.ConfirmChapters]) which
+ * chapters to download and fetches the rest, retrying through [readWithRateLimit] on AO3 rate
+ * limits.
+ *
+ * @return the chapters to bundle into the epub (sorted by chapter number), and whether that
+ *         selection represents the whole story.
+ */
+suspend fun selectChaptersToDownload(
+    initialChapter: Chapter,
+    driverType: DriverType,
+    chapterReader: ChapterReader,
+    setState: (DownloadState) -> Unit,
+): Pair<List<Chapter>, Boolean> {
     val knownChapters = initialChapter.chapterIndex
 
     val chaptersInEpub = mutableListOf(initialChapter)
@@ -205,7 +269,7 @@ suspend fun downloadLogic(
                     val id = knownChapters[chapterSelection.chapter]!!
 
                     val chapter = readWithRateLimit(
-                        { driver.readChapter(storyId, id) },
+                        { chapterReader.readChapter(initialChapter.storyId, id) },
                         { setState(DownloadState.DownloadingRemainingChapters(1, 1, it)) }
                     )
 
@@ -247,7 +311,7 @@ suspend fun downloadLogic(
                         }
 
                         val chapter = readWithRateLimit(
-                            { driver.readChapter(storyId, id) },
+                            { chapterReader.readChapter(initialChapter.storyId, id) },
                             { setDlState(index, it) }
                         )
 
@@ -281,7 +345,7 @@ suspend fun downloadLogic(
                     }
 
                     val chapter = readWithRateLimit(
-                        { driver.readChapter(storyId, id) },
+                        { chapterReader.readChapter(initialChapter.storyId, id) },
                         { setDlState(index, it) }
                     )
 
@@ -295,46 +359,10 @@ suspend fun downloadLogic(
     // Make sure that we put the chapters in order
     chaptersInEpub.sortBy { it.num }
 
-    // Build the epub file and its name
-    val epub = makeEpub(chaptersInEpub)
-    val fileName = FileName.make(chaptersInEpub, wholeStory)
-
-    // Direct reMarkable Cloud upload was removed; Share (below) is currently the only
-    // upload path. A future reimplementation of the cloud integration plugs back in here.
-    Log.d(TAG, "Upload via Android Share")
-    // Read how to do so at https://developer.android.com/training/secure-file-sharing
-    // 1. Save the epub on file system
-    val epubFile = context.filesDir.resolve("epub/$fileName")
-    epubFile.parentFile?.mkdir()
-    epubFile.writeBytes(epub)
-
-    // 2. Initiate intent to share epub file
-    val fileUri = FileProvider.getUriForFile(
-        context,
-        "eu.monniot.resync.fileprovider",
-        epubFile
-    )
-
-    val shareIntent: Intent = Intent().apply {
-        action = Intent.ACTION_SEND
-        type = "application/epub+zip"
-
-        clipData = ClipData(fileName.replace(".epub", ""),
-            arrayOf("application/epub+zip"),
-            ClipData.Item(fileUri))
-
-        // BC purposes, which isn't require for rm app (maybe)
-        putExtra(Intent.EXTRA_STREAM, fileUri)
-
-        putExtra(Intent.EXTRA_SUBJECT, "Sharing Story...")
-        putExtra(Intent.EXTRA_TEXT, "Sharing Story...")
-        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-    }
-
-    context.startActivity(Intent.createChooser(shareIntent, "Share Story"), null)
+    return chaptersInEpub to wholeStory
 }
 
-private suspend fun readWithRateLimit(
+internal suspend fun readWithRateLimit(
     read: suspend () -> Chapter,
     updateState: (String) -> Unit,
     maxRetry: Int = 10, // tried for 10 minutes to know the limit
@@ -356,7 +384,7 @@ private suspend fun readWithRateLimit(
     throw Driver.Companion.RateLimited
 }
 
-private fun ao3RLNotice(limitHit: Int, remainingSeconds: Int): String {
+internal fun ao3RLNotice(limitHit: Int, remainingSeconds: Int): String {
     val n = when (limitHit) {
         1 -> "once"
         2 -> "twice"
