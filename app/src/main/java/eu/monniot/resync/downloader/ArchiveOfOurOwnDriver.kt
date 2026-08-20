@@ -14,7 +14,7 @@ class ArchiveOfOurOwnDriver(private val filesDir: File) : Driver() {
     override val ioDispatcher: CoroutineDispatcher
         get() = Dispatchers.IO
     override val tmpChaptersFolder: File
-        get() = filesDir.resolve("ffnet")
+        get() = filesDir.resolve("ao3")
 
     override fun makeUrl(storyId: StoryId, chapterId: ChapterId): String =
         if (chapterId.id == null) {
