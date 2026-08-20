@@ -8,12 +8,9 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 
 ## Medium
 
-- [Release build config is machine-specific and unversioned](release-build-configuration.md)
-- [Pure logic outside the scrapers has no test coverage](pure-logic-test-coverage.md)
 
 ## Low / trivial
 
-- [compose ui-tooling ships in release APKs](compose-ui-tooling-debug-only.md)
 - [Consolidate dependency versions into a version catalog](gradle-version-catalog.md)
 - [Remove dead code and template leftovers](remove-dead-code.md)
 - [Search screen ships hardcoded ids and an unreachable provider picker](search-screen-unusable.md)
