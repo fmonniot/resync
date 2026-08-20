@@ -164,6 +164,14 @@ suspend fun downloadLogic(
     val epub = makeEpub(chaptersInEpub)
     val fileName = FileName.make(chaptersInEpub, wholeStory)
 
+    // The epub has been built successfully, so the cached chapter HTML backing it is no
+    // longer needed regardless of what happens with the resulting file (share sheet,
+    // etc.) - clear it now rather than letting it accumulate on disk forever. This is
+    // deliberately NOT done earlier/inside selectChaptersToDownload: an in-progress (and
+    // possibly AO3-rate-limited) download relies on that cache to resume without
+    // refetching already-downloaded chapters.
+    clearChapterCache(driver.storyCacheDir(storyId))
+
     // Direct reMarkable Cloud upload was removed; Share (below) is currently the only
     // upload path. A future reimplementation of the cloud integration plugs back in here.
     Log.d(TAG, "Upload via Android Share")
@@ -299,9 +307,11 @@ suspend fun selectChaptersToDownload(
                         // TODO Check if the index is correctly aligned (0 or 1)
                         setDlState(index, null)
 
-                        // TODO Investigate if storing chapters on disk is a good idea or not
-                        // Mostly because with AO3's RL dl a story can now take a long time,
-                        // increasing the risk of loosing work/time.
+                        // Chapters stay cached on disk (Driver.readChapter) for the duration of
+                        // the download: AO3's rate-limited retries can make a story take a long
+                        // time, and re-fetching everything from scratch after a rate limit hit
+                        // would be expensive. downloadLogic clears the story's cache directory
+                        // once the epub has been built successfully.
 
                         // AO3 has a vague definition of what they consider normal usage.
                         // Let's wait 5 seconds between each chapter. It's more or less like
