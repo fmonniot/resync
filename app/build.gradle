@@ -5,15 +5,44 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose' version '2.4.10'
 }
 
+// Release signing is machine-specific: the keystore and its credentials live outside version
+// control, in ~/.gradle/gradle.properties (or the matching environment variables, for CI). When
+// they're not present — any machine but the owner's — the release build type falls back to the
+// debug signing config so `assembleRelease` still produces an installable (debug-signed) APK
+// instead of failing outright.
+def releaseStoreFile = project.findProperty('RESYNC_RELEASE_STORE_FILE') ?: System.getenv('RESYNC_RELEASE_STORE_FILE')
+def releaseStorePassword = project.findProperty('RESYNC_RELEASE_STORE_PASSWORD') ?: System.getenv('RESYNC_RELEASE_STORE_PASSWORD')
+def releaseKeyAlias = project.findProperty('RESYNC_RELEASE_KEY_ALIAS') ?: System.getenv('RESYNC_RELEASE_KEY_ALIAS')
+def releaseKeyPassword = project.findProperty('RESYNC_RELEASE_KEY_PASSWORD') ?: System.getenv('RESYNC_RELEASE_KEY_PASSWORD')
+
+def hasReleaseSigningConfig = releaseStoreFile && file(releaseStoreFile.toString()).exists() &&
+        releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
+// versionCode must increase monotonically across releases: the number of commits on the branch
+// is a simple, deterministic proxy for that (never decreases, doesn't need manual bookkeeping).
+// versionName pairs that same count with a manually-bumped major.minor "product" version, since
+// the repo doesn't currently use release tags to derive a semantic version from.
+def gitCommitCount = {
+    try {
+        def process = ['git', 'rev-list', '--count', 'HEAD'].execute(null, projectDir)
+        process.waitFor()
+        return process.exitValue() == 0 ? process.text.trim().toInteger() : 1
+    } catch (Exception ignored) {
+        return 1
+    }
+}()
+
 android {
     namespace 'eu.monniot.resync'
 
     signingConfigs {
-        release {
-            storeFile file('/Users/francoismonniot/AndroidSigningKeystoreDebug')
-            storePassword 'android-signing-keystore-debug'
-            keyAlias 'android-signing-keystore-debug'
-            keyPassword 'android-signing-keystore-debug'
+        if (hasReleaseSigningConfig) {
+            release {
+                storeFile file(releaseStoreFile.toString())
+                storePassword releaseStorePassword.toString()
+                keyAlias releaseKeyAlias.toString()
+                keyPassword releaseKeyPassword.toString()
+            }
         }
     }
 
@@ -24,8 +53,8 @@ android {
         compileSdk = 37
 
         applicationId "eu.monniot.resync"
-        versionCode 1
-        versionName "1.0"
+        versionCode gitCommitCount
+        versionName "1.0.${gitCommitCount}"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,7 +63,7 @@ android {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig hasReleaseSigningConfig ? signingConfigs.release : signingConfigs.debug
         }
     }
     compileOptions {
