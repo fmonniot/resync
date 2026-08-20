@@ -10,12 +10,21 @@ import eu.monniot.resync.BuildConfig
 import kotlinx.coroutines.*
 import java.io.File
 
+// Seam for testing: the chapter-selection/rate-limit-retry state machine in
+// downloadLogic (ui/downloader/DownloadScreen.kt) only needs this single method, not
+// the WebView plumbing the rest of Driver carries. Depending on the interface instead
+// of the concrete Driver class lets that state machine be driven with a fake in unit
+// tests, without a WebView or a real Context.
+interface ChapterReader {
+    suspend fun readChapter(storyId: StoryId, chapterId: ChapterId): Chapter
+}
+
 // Because of its reliance of a WebView, the Driver should be in the same
 // composable tree as the WebView. That way, if the view is being removed
 // the driver will be too and no leak will occurs.
 // The decision to have the WebView been set outside of init is because
 // we still want the driver to leave alongside the WebView, not within it
-abstract class Driver {
+abstract class Driver : ChapterReader {
     private var view: WebView? = null
     private val ready = CompletableDeferred<Unit>()
 
@@ -53,7 +62,7 @@ abstract class Driver {
 
     // Could take a Context here and make the temporary folder
     // That would mean less places where the
-    suspend fun readChapter(storyId: StoryId, chapterId: ChapterId): Chapter {
+    override suspend fun readChapter(storyId: StoryId, chapterId: ChapterId): Chapter {
         val tmpChapterFile = tmpChaptersFolder.resolve("${storyId.id}/${chapterId.id}.html")
         val tmpChapter = withContext(ioDispatcher) {
             if (!tmpChapterFile.exists()) return@withContext null
