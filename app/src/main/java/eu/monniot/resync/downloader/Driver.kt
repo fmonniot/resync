@@ -60,10 +60,15 @@ abstract class Driver : ChapterReader {
         this.ready.await()
     }
 
+    // Exposed so downloadLogic (ui/downloader/DownloadScreen.kt) can locate/clear a
+    // story's on-disk cache once its epub has been built successfully, without needing
+    // access to the protected tmpChaptersFolder itself.
+    fun storyCacheDir(storyId: StoryId): File = tmpChaptersFolder.resolve("${storyId.id}")
+
     // Could take a Context here and make the temporary folder
     // That would mean less places where the
     override suspend fun readChapter(storyId: StoryId, chapterId: ChapterId): Chapter {
-        val tmpChapterFile = tmpChaptersFolder.resolve("${storyId.id}/${chapterId.id}.html")
+        val tmpChapterFile = storyCacheDir(storyId).resolve(chapterCacheFileName(chapterId))
         val tmpChapter = withContext(ioDispatcher) {
             if (!tmpChapterFile.exists()) return@withContext null
 
@@ -145,4 +150,26 @@ abstract class Driver : ChapterReader {
             }
         }
     }
+}
+
+// Factored out as a top-level function (rather than inline in readChapter) so the
+// null-chapter-id case can be unit tested directly. AO3 one-shots are fetched with
+// ChapterId(null) (see ArchiveOfOurOwnDriver.makeUrl); naively interpolating that into a
+// filename produces a literal "null.html" cache file, which is confusing on disk and
+// collides across different one-shot stories to boot. "oneshot" is a deliberate,
+// human-readable sentinel instead.
+internal fun chapterCacheFileName(chapterId: ChapterId): String =
+    "${chapterId.id ?: "oneshot"}.html"
+
+// Deletes a story's on-disk chapter-HTML cache (see Driver.storyCacheDir). Intended to be
+// called once a download has completed successfully — e.g. after downloadLogic's makeEpub
+// call succeeds (ui/downloader/DownloadScreen.kt) — so cached chapters don't accumulate on
+// disk forever. Deliberately NOT called while a download is still in progress (including
+// across AO3 rate-limit retries in readWithRateLimit), so a retry can keep resuming
+// previously-fetched chapters from disk instead of refetching them.
+//
+// Takes a plain File rather than a Context/Driver so it can be unit tested with a temp
+// directory (see CLAUDE.md's note on Context-dependent code in downloadLogic).
+internal fun clearChapterCache(storyCacheDir: File) {
+    storyCacheDir.deleteRecursively()
 }

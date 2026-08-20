@@ -12,8 +12,6 @@ fix, and acceptance criteria. Priorities are relative to each other, not absolut
 ## Low / trivial
 
 - [Consolidate dependency versions into a version catalog](gradle-version-catalog.md)
-- [Remove dead code and template leftovers](remove-dead-code.md)
-- [Chapter HTML cache is shared between drivers and never cleaned](chapter-cache-management.md)
 - [Comments contradict the code they describe](comment-drift.md)
 
 ## Suggested order

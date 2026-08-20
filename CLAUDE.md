@@ -60,7 +60,10 @@ Two entry-point activities, both pure Compose (`setContent(null) { ReSyncTheme {
    is the main regression suite.
 
 Fetched HTML is cached on disk under `filesDir` per story/chapter and re-parsed on subsequent runs.
-Note both drivers currently point `tmpChaptersFolder` at `filesDir/ffnet`.
+Each driver has its own `tmpChaptersFolder` subdirectory (`filesDir/ffnet`, `filesDir/ao3`) so the
+two sites' id spaces can't collide. `downloadLogic` clears a story's cache directory once its epub
+has been built successfully; it is deliberately left in place while a download is still in
+progress (including across AO3 rate-limit retries) so a retry can resume from disk.
 
 Site quirks encoded in the drivers: AO3 rate-limits (~40 chapters / 5 min) and returns a "Retry
 later" body → `Driver.Companion.RateLimited`; FF.Net shows a Cloudflare interstitial ("DDoS
