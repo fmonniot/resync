@@ -10,6 +10,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 
 // Using Robolectric to have access to a real android.webkit.WebView in unit tests.
+//
+// BuildConfig.DEBUG is a compile-time constant baked in per build variant (unit tests
+// always run against the debug variant), so it can't be flipped from a test. installGrabber
+// instead takes debugBuild as a parameter (defaulting to BuildConfig.DEBUG for production
+// callers) so both branches of the release/debug gate are exercised here.
 @RunWith(RobolectricTestRunner::class)
 class DriverTest {
 
@@ -47,5 +52,27 @@ class DriverTest {
 
         Assert.assertNotNull(secondView.webViewClient)
         Assert.assertTrue(secondView.settings.javaScriptEnabled)
+    }
+
+    @Test
+    fun installGrabber_enablesWebContentsDebugging_onDebugBuilds() {
+        val driver = FanFictionNetDriver(folder.root)
+        var enabledWith: Boolean? = null
+        driver.webContentsDebuggingSetter = { enabledWith = it }
+
+        driver.installGrabber(makeWebView(), debugBuild = true)
+
+        Assert.assertEquals(true, enabledWith)
+    }
+
+    @Test
+    fun installGrabber_doesNotEnableWebContentsDebugging_onReleaseBuilds() {
+        val driver = FanFictionNetDriver(folder.root)
+        var wasCalled = false
+        driver.webContentsDebuggingSetter = { wasCalled = true }
+
+        driver.installGrabber(makeWebView(), debugBuild = false)
+
+        Assert.assertFalse(wasCalled)
     }
 }

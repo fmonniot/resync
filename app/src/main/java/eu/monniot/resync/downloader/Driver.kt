@@ -19,6 +19,12 @@ abstract class Driver {
     private var view: WebView? = null
     private val ready = CompletableDeferred<Unit>()
 
+    // Seam for testing: production code always goes through the real WebView API,
+    // but the BuildConfig.DEBUG gating below is otherwise impossible to unit test
+    // since the flag is a compile-time constant baked in by the build variant.
+    internal var webContentsDebuggingSetter: (Boolean) -> Unit =
+        WebView::setWebContentsDebuggingEnabled
+
     protected abstract val ioDispatcher: CoroutineDispatcher
     protected abstract val tmpChaptersFolder: File
 
@@ -27,14 +33,14 @@ abstract class Driver {
     abstract fun parseWebPage(source: String, storyId: StoryId, chapterId: ChapterId): Chapter
 
     @SuppressLint("SetJavaScriptEnabled")
-    fun installGrabber(view: WebView) {
+    fun installGrabber(view: WebView, debugBuild: Boolean = BuildConfig.DEBUG) {
         // Idempotent: AndroidView's update lambda can be invoked again for the same
         // WebView instance (e.g. on unrelated recompositions). Re-running the setup
         // below would needlessly reassign the webViewClient; skip it if this driver
         // is already attached to this exact view.
         if (this.view === view) return
 
-        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
+        if (debugBuild) webContentsDebuggingSetter(true)
         this.view = view
         view.settings.javaScriptEnabled = true
         view.webViewClient = makeWebViewClient()
