@@ -1,5 +1,10 @@
 package eu.monniot.resync.ui.launcher
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
@@ -68,10 +73,22 @@ fun LauncherScreen(
                         selected = itemSelected,
                         onClick = { selectedItem = item },
                         icon = {
-                            Icon(
-                                if (itemSelected) item.iconFilled else item.iconOutline,
-                                contentDescription = null,
-                            )
+                            // The pill indicator behind this icon animates for free via
+                            // NavigationBarItem (no colors = override suppressing it, per
+                            // redesign-01). This AnimatedContent only handles the outline<->filled
+                            // icon crossfade on top of it.
+                            AnimatedContent(
+                                targetState = itemSelected,
+                                transitionSpec = {
+                                    fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                                },
+                                label = "navIcon",
+                            ) { selected ->
+                                Icon(
+                                    if (selected) item.iconFilled else item.iconOutline,
+                                    contentDescription = null,
+                                )
+                            }
                         },
                         label = { Text(item.sectionName) },
                     )
