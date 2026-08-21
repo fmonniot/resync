@@ -3,22 +3,16 @@ package eu.monniot.resync.ui.downloader
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-// The rest of this file (ConfirmChapters, FetchingFirstChapterView, DownloadingRemainingChapters)
-// has been migrated to M3; DisplayDownloadError has not (separate ticket) and still needs a
-// handful of M2 symbols (MaterialTheme.typography.h6/body2) that have no direct M3 equivalent.
-// Both packages declare types with the same simple names (Text, MaterialTheme, ...), so the M2
-// ones used below are imported explicitly under an alias instead of via
-// `androidx.compose.material.*`, which would otherwise shadow the M3 wildcard import for the
-// whole file.
-import androidx.compose.material.MaterialTheme as M2MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
@@ -26,15 +20,20 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat.startActivity
 import androidx.core.content.FileProvider
@@ -48,6 +47,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import java.io.File
 import java.lang.NumberFormatException
@@ -87,7 +87,11 @@ fun DownloadScreen(
 
     var downloadJob by remember { mutableStateOf<Job?>(null) }
 
-    LaunchedEffect(key1 = storyId, key2 = chapterId) {
+    // Incremented by the Error screen's "Try again" button (see onRetry below) to force the
+    // LaunchedEffect to re-run without changing storyId/chapterId.
+    var attempt by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(key1 = storyId, key2 = chapterId, key3 = attempt) {
         downloadJob = coroutineContext[Job]
         try {
             // wait for the driver to be attached to a running WebView
@@ -111,6 +115,14 @@ fun DownloadScreen(
         downloadJob?.cancel()
         clearChapterCache(driver.storyCacheDir(storyId))
         onDone()
+    }
+
+    // Resetting the state is not optional: downloadLogic does not set a state before its first
+    // driver.readChapter call, so without this the Error screen would stay on screen for the
+    // whole retry with no feedback that anything happened.
+    val onRetry: () -> Unit = {
+        setState(DownloadState.FetchingFirstChapter(storyId, chapterId))
+        attempt++
     }
 
     Box {
@@ -162,9 +174,11 @@ fun DownloadScreen(
             )
             is DownloadState.Error -> DisplayDownloadError(
                 error = state.throwable,
-                driverType,
-                storyId,
-                chapterId
+                driverType = driverType,
+                storyId = storyId,
+                chapterId = chapterId,
+                onRetry = onRetry,
+                onDone = onCancel,
             )
             is DownloadState.Success -> DownloadSuccess(
                 summary = state.summary,
@@ -1001,36 +1015,166 @@ fun DownloadingRemainingChaptersDarkPreview() {
     }
 }
 
+/**
+ * Builds the "Copy error details" clipboard payload: a small provider/story/chapter table
+ * followed by the raw stack trace. Uses [driverType]/[storyId]/[chapterId]'s underlying values
+ * rather than the value classes' `toString()`, which would otherwise leak as e.g. `StoryId(id=…)`.
+ */
+private fun errorDetailsText(
+    error: Throwable,
+    driverType: DriverType,
+    storyId: StoryId,
+    chapterId: ChapterId,
+): String {
+    val chapter = chapterId.id?.toString() ?: "—"
+    return "Provider  ${driverType.websiteName()}\n" +
+            "Story ID  ${storyId.id}\n" +
+            "Chapter   $chapter\n" +
+            "\n" +
+            error.stackTraceToString()
+}
+
 @Composable
 fun DisplayDownloadError(
     error: Throwable,
     driverType: DriverType,
     storyId: StoryId,
     chapterId: ChapterId,
+    onRetry: () -> Unit = {},
+    onDone: () -> Unit = {},
+    // Preview-only hook to render the expanded disclosure state; real callers never pass this.
+    initiallyExpanded: Boolean = false,
 ) {
-    val state = rememberScrollState()
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+
+    var expanded by remember { mutableStateOf(initiallyExpanded) }
 
     Column(
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = if (expanded) Arrangement.Top else Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight()
-            .verticalScroll(state),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp)
+            .then(if (expanded) Modifier.padding(top = 32.dp) else Modifier),
     ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.errorContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                // TODO(redesign-11): swap for Icons.Rounded.Error once the Material Symbols
+                // icon set lands (docs/tickets/redesign-11-material-symbols-icons.md) -
+                // material-icons-core has no filled "error" glyph.
+                imageVector = Icons.Rounded.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(28.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Error while downloading story",
-            style = M2MaterialTheme.typography.h6,
-        )
-
-        Text(
-            text = "$storyId; $chapterId; DriverType($driverType)",
-            style = M2MaterialTheme.typography.body2,
+            text = "Something went wrong",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
 
-        Text(error.stackTraceToString())
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "We couldn't finish reading this chapter. This is usually temporary — try again in a moment.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onRetry,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Try again")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(
+            onClick = onDone,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Close")
+        }
+
+        TextButton(
+            onClick = {
+                val details = errorDetailsText(error, driverType, storyId, chapterId)
+                scope.launch {
+                    clipboard.setClipEntry(
+                        ClipEntry(ClipData.newPlainText("reSync error", details))
+                    )
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                        Toast.makeText(context, "Error details copied", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Copy error details")
+        }
+
+        TextButton(
+            onClick = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Technical details")
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                // TODO(redesign-11): swap for Icons.Rounded.ExpandMore/ExpandLess once the
+                // Material Symbols icon set lands
+                // (docs/tickets/redesign-11-material-symbols-icons.md)
+                imageVector = if (expanded) {
+                    Icons.Rounded.KeyboardArrowUp
+                } else {
+                    Icons.Rounded.KeyboardArrowDown
+                },
+                contentDescription = null,
+            )
+        }
+
+        if (expanded) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = errorDetailsText(error, driverType, storyId, chapterId),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 20.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                )
+            }
+        }
     }
 }
 
@@ -1068,7 +1212,7 @@ fun DownloadingRemainingChaptersNoticeDarkPreview() {
 
 @Preview(
     showBackground = true,
-    name = "Download failed"
+    name = "Download failed (Light)"
 )
 @Composable
 fun DisplayDownloadErrorPreview() {
@@ -1080,6 +1224,62 @@ fun DisplayDownloadErrorPreview() {
             storyId = StoryId(27855042),
             chapterId = ChapterId(68198782),
             driverType = DriverType.ArchiveOfOurOwn
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Download failed (Dark)"
+)
+@Composable
+fun DisplayDownloadErrorDarkPreview() {
+    val exception = NumberFormatException("For input string: \"\"")
+
+    ReSyncTheme(darkTheme = true) {
+        DisplayDownloadError(
+            error = exception,
+            storyId = StoryId(27855042),
+            chapterId = ChapterId(68198782),
+            driverType = DriverType.ArchiveOfOurOwn
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Download failed (Details expanded, Light)"
+)
+@Composable
+fun DisplayDownloadErrorExpandedPreview() {
+    val exception = NumberFormatException("For input string: \"\"")
+
+    ReSyncTheme {
+        DisplayDownloadError(
+            error = exception,
+            storyId = StoryId(27855042),
+            chapterId = ChapterId(68198782),
+            driverType = DriverType.ArchiveOfOurOwn,
+            initiallyExpanded = true,
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Download failed (Details expanded, Dark)"
+)
+@Composable
+fun DisplayDownloadErrorExpandedDarkPreview() {
+    val exception = NumberFormatException("For input string: \"\"")
+
+    ReSyncTheme(darkTheme = true) {
+        DisplayDownloadError(
+            error = exception,
+            storyId = StoryId(27855042),
+            chapterId = ChapterId(68198782),
+            driverType = DriverType.ArchiveOfOurOwn,
+            initiallyExpanded = true,
         )
     }
 }
