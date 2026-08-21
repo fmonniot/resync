@@ -165,7 +165,9 @@ tasks.register('jacocoTestReport', JacocoReport) {
     def javaClasses = fileTree(layout.buildDirectory.dir('intermediates/javac/debug/compileDebugJavaWithJavac/classes')) {
         exclude coverageExcludes
     }
-    def kotlinClasses = fileTree(layout.buildDirectory.dir('tmp/kotlin-classes/debug')) {
+    // AGP's built-in Kotlin support (in use since the project dropped the kotlin.android
+    // plugin) compiles here instead of the old tmp/kotlin-classes/debug.
+    def kotlinClasses = fileTree(layout.buildDirectory.dir('intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes')) {
         exclude coverageExcludes
     }
 
