@@ -10,17 +10,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-// The rest of this file (ConfirmChapters) has been migrated to M3; FetchingFirstChapterView,
-// DownloadingRemainingChapters and DisplayDownloadError have not (separate tickets) and still
-// need a handful of M2 symbols (MaterialTheme.typography.h6/body2, the Float-based
-// CircularProgressIndicator overload) that have no direct M3 equivalent. Both packages declare
-// types with the same simple names (Text, MaterialTheme, ...), so the M2 ones used below are
-// imported explicitly under an alias instead of via `androidx.compose.material.*`, which would
-// otherwise shadow the M3 wildcard import for the whole file.
-import androidx.compose.material.CircularProgressIndicator as M2CircularProgressIndicator
+// The rest of this file (ConfirmChapters, FetchingFirstChapterView, DownloadingRemainingChapters)
+// has been migrated to M3; DisplayDownloadError has not (separate ticket) and still needs a
+// handful of M2 symbols (MaterialTheme.typography.h6/body2) that have no direct M3 equivalent.
+// Both packages declare types with the same simple names (Text, MaterialTheme, ...), so the M2
+// ones used below are imported explicitly under an alias instead of via
+// `androidx.compose.material.*`, which would otherwise shadow the M3 wildcard import for the
+// whole file.
 import androidx.compose.material.MaterialTheme as M2MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.*
@@ -138,6 +138,7 @@ fun DownloadScreen(
             is DownloadState.FetchingFirstChapter -> FetchingFirstChapterView(
                 storyId = state.storyId,
                 chapterId = state.chapterId,
+                onCancel = onCancel,
             )
             is DownloadState.ConfirmChapters -> ConfirmChapters(
                 state.storyName,
@@ -149,6 +150,7 @@ fun DownloadScreen(
                 onCancel = onCancel,
             )
             is DownloadState.DownloadingRemainingChapters -> DownloadingRemainingChapters(
+                storyName = state.storyName,
                 currentlyDownloading = state.currentlyDownloading,
                 totalToDownloads = state.totalToDownloads,
                 notice = state.notice,
@@ -304,12 +306,22 @@ suspend fun selectChaptersToDownload(
                 } else {
                     // The id have to exists, because the selection is constrained
                     // within the known/existing chapters.
-                    setState(DownloadState.DownloadingRemainingChapters(1, 1, null))
+                    setState(
+                        DownloadState.DownloadingRemainingChapters(
+                            initialChapter.storyName, 1, 1, null
+                        )
+                    )
                     val id = knownChapters[chapterSelection.chapter]!!
 
                     val chapter = readWithRateLimit(
                         { chapterReader.readChapter(initialChapter.storyId, id) },
-                        { setState(DownloadState.DownloadingRemainingChapters(1, 1, it)) }
+                        {
+                            setState(
+                                DownloadState.DownloadingRemainingChapters(
+                                    initialChapter.storyName, 1, 1, it
+                                )
+                            )
+                        }
                     )
 
                     // The user only want the selected chapter, remove the initial one
@@ -324,6 +336,7 @@ suspend fun selectChaptersToDownload(
                 val setDlState = { index: Int, notice: String? ->
                     setState(
                         DownloadState.DownloadingRemainingChapters(
+                            initialChapter.storyName,
                             index,
                             initialChapter.totalChapters - 1,
                             notice,
@@ -367,6 +380,7 @@ suspend fun selectChaptersToDownload(
                 val setDlState = { index: Int, notice: String? ->
                     setState(
                         DownloadState.DownloadingRemainingChapters(
+                            initialChapter.storyName,
                             index,
                             toDownload.size,
                             notice
@@ -452,6 +466,7 @@ sealed interface DownloadState {
 
     // TODO Is currently 0 or 1-indexed value ?
     data class DownloadingRemainingChapters(
+        val storyName: String,
         val currentlyDownloading: Int,
         val totalToDownloads: Int,
         val notice: String?,
@@ -461,39 +476,79 @@ sealed interface DownloadState {
 }
 
 
+/**
+ * The 64dp header row shared by the full-screen task states ([FetchingFirstChapterView],
+ * [DownloadingRemainingChapters]): a close [IconButton] bound to [onCancel], plus [title] when
+ * known. [FetchingFirstChapterView] passes `title = null` - the story name isn't known until the
+ * first chapter has been fetched and parsed, which is what that state is doing.
+ */
 @Composable
-fun FetchingFirstChapterView(storyId: StoryId, chapterId: ChapterId) {
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+private fun TaskStateHeader(title: String?, onCancel: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(),
+            .height(64.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        IconButton(
+            onClick = onCancel,
+            modifier = Modifier.padding(start = 4.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = "Close",
+            )
+        }
 
-        Text(
-            text = "Looking up Story",
-            style = M2MaterialTheme.typography.h6,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
+        if (title != null) {
+            Spacer(modifier = Modifier.width(4.dp))
 
-        Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
 
-        Text(
-            text = "(id: ${storyId.id} | Chapter: ${chapterId.id})",
-            style = M2MaterialTheme.typography.body2,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
+@Composable
+fun FetchingFirstChapterView(
+    storyId: StoryId,
+    chapterId: ChapterId,
+    onCancel: () -> Unit = {},
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TaskStateHeader(title = null, onCancel = onCancel)
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        M2CircularProgressIndicator(
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .width(100.dp)
-                .height(100.dp)
-                .align(Alignment.CenterHorizontally)
-        )
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 24.dp),
+        ) {
+            // No progress argument: fetching the first chapter is a single unknown-duration
+            // request, so the indeterminate animation is M3's (and the design's) default.
+            CircularProgressIndicator(modifier = Modifier.size(64.dp))
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Looking up story",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "id: ${storyId.id} · chapter: ${chapterId.id}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -807,31 +862,22 @@ fun ConfirmChaptersExpandedPreview() {
 
 @Composable
 fun DownloadingRemainingChapters(
+    storyName: String,
     currentlyDownloading: Int,
     totalToDownloads: Int,
     notice: String?,
     onCancel: () -> Unit = {},
 ) {
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(),
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TaskStateHeader(title = storyName, onCancel = onCancel)
 
-        Text(
-            text = "Fetching Story",
-            style = M2MaterialTheme.typography.h6,
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Box(
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .width(100.dp)
-                .height(100.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 24.dp),
         ) {
 
             // TODO We should change the current/total numbers to start from 0
@@ -840,39 +886,77 @@ fun DownloadingRemainingChapters(
             // eg. start at 45 and end ta 50, progression is from 90 to 100%.
             // Use the preview tool to understand what bounds we need, then create
             // value classes to enforce 0-indexed or 1-indexed value. Maybe.
-            M2CircularProgressIndicator(
-                progress = currentlyDownloading.toFloat() / totalToDownloads,
-                modifier = Modifier
-                    .fillMaxSize()
+            CircularProgressIndicator(
+                progress = { currentlyDownloading.toFloat() / totalToDownloads },
+                modifier = Modifier.size(64.dp),
             )
-            Text(
-                text = "$currentlyDownloading/${totalToDownloads}\nchapters",
-                style = M2MaterialTheme.typography.body2,
-                textAlign = TextAlign.Center,
-            )
-        }
 
-        if (notice != null) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = notice,
-                style = M2MaterialTheme.typography.body2,
-                textAlign = TextAlign.Center,
+                text = "Fetching story",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-        }
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "$currentlyDownloading of $totalToDownloads chapters",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            if (notice != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = notice,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
 @Preview(
     showBackground = true,
-    name = "Downloading chapters (w/o notice)"
+    name = "Downloading chapters (w/o notice, Light)"
 )
 @Composable
 fun DownloadingRemainingChaptersPreview() {
     ReSyncTheme {
         DownloadingRemainingChapters(
+            storyName = "The Story Name",
+            currentlyDownloading = 8888,
+            totalToDownloads = 9999,
+            notice = null
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Downloading chapters (w/o notice, Dark)"
+)
+@Composable
+fun DownloadingRemainingChaptersDarkPreview() {
+    ReSyncTheme(darkTheme = true) {
+        DownloadingRemainingChapters(
+            storyName = "The Story Name",
             currentlyDownloading = 8888,
             totalToDownloads = 9999,
             notice = null
@@ -915,12 +999,29 @@ fun DisplayDownloadError(
 
 @Preview(
     showBackground = true,
-    name = "Downloading chapters (with notice)"
+    name = "Downloading chapters (with notice, Light)"
 )
 @Composable
 fun DownloadingRemainingChaptersNoticePreview() {
     ReSyncTheme {
         DownloadingRemainingChapters(
+            storyName = "The Story Name",
+            currentlyDownloading = 2,
+            totalToDownloads = 3,
+            notice = "AO3 rate limit hit (1 time)\nWaiting 90sec before resuming download."
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Downloading chapters (with notice, Dark)"
+)
+@Composable
+fun DownloadingRemainingChaptersNoticeDarkPreview() {
+    ReSyncTheme(darkTheme = true) {
+        DownloadingRemainingChapters(
+            storyName = "The Story Name",
             currentlyDownloading = 2,
             totalToDownloads = 3,
             notice = "AO3 rate limit hit (1 time)\nWaiting 90sec before resuming download."
