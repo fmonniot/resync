@@ -5,6 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -87,10 +91,7 @@ fun ConsolidateView(
     when (initialized) {
         ViewState.NoAccount ->
             ConsolidateEmptyState(
-                // TODO(redesign-11): swap for Icons.Rounded.CloudOff once the Material Symbols
-                // icon set lands (docs/tickets/redesign-11-material-symbols-icons.md) -
-                // material-icons-core has no "cloud_off" glyph.
-                icon = null,
+                icon = Icons.Rounded.CloudOff,
                 title = "No reMarkable account set",
                 subtitle = "Use the Share sheet after downloading a story to send it to reMarkable for now.",
             )
@@ -119,11 +120,7 @@ fun ConsolidateView(
                     if (documents.isEmpty()) {
                         item {
                             ConsolidateEmptyState(
-                                // TODO(redesign-11): swap for Icons.Rounded.Inbox once the
-                                // Material Symbols icon set lands
-                                // (docs/tickets/redesign-11-material-symbols-icons.md) -
-                                // material-icons-core has no "inbox" glyph.
-                                icon = null,
+                                icon = Icons.Rounded.Inbox,
                                 title = "No documents yet",
                                 subtitle = "Pull down to refresh",
                                 modifier = Modifier.fillParentMaxSize(),
@@ -142,10 +139,13 @@ fun ConsolidateView(
                                         doc.chapters.joinToString { FileName.formatChapters(it) }
                                     Text(text)
                                 },
-                                // TODO(redesign-11): add a leading Icons.Rounded.Description
-                                // once the Material Symbols icon set lands
-                                // (docs/tickets/redesign-11-material-symbols-icons.md) -
-                                // material-icons-core has no "description" glyph.
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Description,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
                                 modifier = Modifier.clickable {
                                     sheetDocument = doc
                                 }

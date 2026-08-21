@@ -17,10 +17,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -679,8 +679,6 @@ fun ConfirmChapters(
                     modifier = Modifier.padding(start = 4.dp),
                 ) {
                     Icon(
-                        // TODO(redesign-11): swap for Icons.Rounded.ArrowBack once the Material
-                        // Symbols icon set lands (docs/tickets/redesign-11-material-symbols-icons.md)
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
                     )
@@ -746,10 +744,7 @@ fun ConfirmChapters(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
-                        // TODO(redesign-11): swap for Icons.Rounded.ExpandMore once the
-                        // Material Symbols icon set lands
-                        // (docs/tickets/redesign-11-material-symbols-icons.md)
-                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        imageVector = Icons.Rounded.ExpandMore,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                     )
@@ -777,10 +772,7 @@ fun ConfirmChapters(
                             )
                             IconButton(onClick = { expanded = false }) {
                                 Icon(
-                                    // TODO(redesign-11): swap for Icons.Rounded.ExpandLess once
-                                    // the Material Symbols icon set lands
-                                    // (docs/tickets/redesign-11-material-symbols-icons.md)
-                                    imageVector = Icons.Rounded.KeyboardArrowUp,
+                                    imageVector = Icons.Rounded.ExpandLess,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
@@ -1069,10 +1061,7 @@ fun DisplayDownloadError(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                // TODO(redesign-11): swap for Icons.Rounded.Error once the Material Symbols
-                // icon set lands (docs/tickets/redesign-11-material-symbols-icons.md) -
-                // material-icons-core has no filled "error" glyph.
-                imageVector = Icons.Rounded.Warning,
+                imageVector = Icons.Rounded.Error,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier.size(28.dp),
@@ -1139,13 +1128,10 @@ fun DisplayDownloadError(
             Text("Technical details")
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
-                // TODO(redesign-11): swap for Icons.Rounded.ExpandMore/ExpandLess once the
-                // Material Symbols icon set lands
-                // (docs/tickets/redesign-11-material-symbols-icons.md)
                 imageVector = if (expanded) {
-                    Icons.Rounded.KeyboardArrowUp
+                    Icons.Rounded.ExpandLess
                 } else {
-                    Icons.Rounded.KeyboardArrowDown
+                    Icons.Rounded.ExpandMore
                 },
                 contentDescription = null,
             )

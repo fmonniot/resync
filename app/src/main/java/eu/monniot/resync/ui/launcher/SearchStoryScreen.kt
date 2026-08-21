@@ -6,11 +6,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -160,13 +165,17 @@ fun StorySelectionView(
 
         Spacer(Modifier.weight(1f))
 
-        // TODO(redesign-11): add a leading Icons.Rounded.Sync once the Material Symbols icon
-        // set lands (see docs/tickets/redesign-11-material-symbols-icons.md).
         Button(
             onClick = onClick,
             enabled = canSyncStory(storyIdText, chapterIdText),
             modifier = Modifier.fillMaxWidth(),
         ) {
+            Icon(
+                imageVector = Icons.Rounded.Sync,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
             Text("Sync")
         }
     }
