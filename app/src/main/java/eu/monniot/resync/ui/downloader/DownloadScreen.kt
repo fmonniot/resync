@@ -5,15 +5,29 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.webkit.WebView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.*
+// The rest of this file (ConfirmChapters) has been migrated to M3; FetchingFirstChapterView,
+// DownloadingRemainingChapters and DisplayDownloadError have not (separate tickets) and still
+// need a handful of M2 symbols (MaterialTheme.typography.h6/body2, the Float-based
+// CircularProgressIndicator overload) that have no direct M3 equivalent. Both packages declare
+// types with the same simple names (Text, MaterialTheme, ...), so the M2 ones used below are
+// imported explicitly under an alias instead of via `androidx.compose.material.*`, which would
+// otherwise shadow the M3 wildcard import for the whole file.
+import androidx.compose.material.CircularProgressIndicator as M2CircularProgressIndicator
+import androidx.compose.material.MaterialTheme as M2MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -30,6 +44,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import java.lang.NumberFormatException
 
 private const val TAG = "DownloadFic"
@@ -458,7 +473,7 @@ fun FetchingFirstChapterView(storyId: StoryId, chapterId: ChapterId) {
 
         Text(
             text = "Looking up Story",
-            style = MaterialTheme.typography.h6,
+            style = M2MaterialTheme.typography.h6,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
 
@@ -466,13 +481,13 @@ fun FetchingFirstChapterView(storyId: StoryId, chapterId: ChapterId) {
 
         Text(
             text = "(id: ${storyId.id} | Chapter: ${chapterId.id})",
-            style = MaterialTheme.typography.body2,
+            style = M2MaterialTheme.typography.body2,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        CircularProgressIndicator(
+        M2CircularProgressIndicator(
             modifier = Modifier
                 .width(100.dp)
                 .height(100.dp)
@@ -496,6 +511,30 @@ fun FetchFirstPreview() {
     }
 }
 
+/**
+ * A left-aligned "OR" divider: two [HorizontalDivider]s flanking a small centered label. Used
+ * between the primary "download entire story" action and the expanded specific-chapters card -
+ * it does not appear in the collapsed state (see [ConfirmChapters]).
+ */
+@Composable
+private fun OrDivider(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f))
+        Text(
+            text = "OR",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f))
+    }
+}
+
 @Composable
 fun ConfirmChapters(
     storyName: String,
@@ -505,106 +544,201 @@ fun ConfirmChapters(
     driverType: DriverType,
     onUserConfirmation: (ChapterSelection) -> Unit,
     onCancel: () -> Unit = {},
+    // Preview-only hook to render the expanded disclosure state; real callers never pass this.
+    initiallyExpanded: Boolean = false,
 ) {
+    var expanded by remember { mutableStateOf(initiallyExpanded) }
+    var chapterStart by remember { mutableStateOf(initialChapterNumber) }
+    var chapterEnd by remember { mutableStateOf(totalChapters) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(0.dp, 40.dp, 0.dp, 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .verticalScroll(rememberScrollState()),
     ) {
-
-        // Story Details
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = storyName, style = MaterialTheme.typography.h3)
-
-            Row {
-                Text(text = "By", style = MaterialTheme.typography.subtitle1)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = authorName,
-                    style = MaterialTheme.typography.subtitle1.copy(fontStyle = FontStyle.Italic)
-                )
-            }
-
-            // TODO Chapter name ?
-            Text(text = if (totalChapters > 1) "$totalChapters chapters" else "One Shot")
-            Text(text = "From: ${driverType.websiteName()}")
-        }
-
-        Spacer(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        )
-
-        // Synchronisation choice
+        // Header: back arrow + story title on a surfaceContainer block. Static (nothing on this
+        // screen scrolls-to-collapse), so a plain Column carries the color/typography rather
+        // than TopAppBar and its scrollBehavior machinery.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(MaterialTheme.colorScheme.surfaceContainer),
         ) {
-
-            Surface(elevation = 1.dp) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.height(64.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = onCancel,
+                    modifier = Modifier.padding(start = 4.dp),
                 ) {
-                    Button(onClick = { onUserConfirmation(ChapterSelection.All) }) {
-                        Text(text = "Synchronise entire story")
-                    }
+                    Icon(
+                        // TODO(redesign-11): swap for Icons.Rounded.ArrowBack once the Material
+                        // Symbols icon set lands (docs/tickets/redesign-11-material-symbols-icons.md)
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                    )
                 }
             }
 
-            Text("OR", modifier = Modifier.padding(8.dp))
+            Text(
+                text = storyName,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+            )
+        }
 
-            Surface(elevation = 1.dp) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp, 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "by $authorName",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // This screen is unreachable for one-shot stories (selectChaptersToDownload skips
+            // ConfirmChapters entirely when totalChapters == 1), so the chip is unconditional.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistChip(
+                    onClick = { /* display-only, not interactive */ },
+                    label = { Text("$totalChapters chapters") },
+                    enabled = true,
+                )
+                AssistChip(
+                    onClick = { /* display-only, not interactive */ },
+                    label = { Text(driverType.websiteName()) },
+                    enabled = true,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { onUserConfirmation(ChapterSelection.All) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Download entire story")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (!expanded) {
+                // Collapsed: a bare text-button row. No card, no "OR" divider - those only
+                // appear once expanded, below.
+                TextButton(
+                    onClick = { expanded = true },
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
+                    Text(
+                        text = "Choose specific chapters",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        // TODO(redesign-11): swap for Icons.Rounded.ExpandMore once the
+                        // Material Symbols icon set lands
+                        // (docs/tickets/redesign-11-material-symbols-icons.md)
+                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            } else {
+                OrDivider()
 
-                    var chapterStart by remember { mutableStateOf(initialChapterNumber) }
-                    var chapterEnd by remember { mutableStateOf(totalChapters) }
-
-                    Button(onClick = {
-                        onUserConfirmation(
-                            if (chapterStart == chapterEnd) {
-                                ChapterSelection.One(chapterStart)
-                            } else {
-                                ChapterSelection.Range(chapterStart, chapterEnd)
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Choose specific chapters",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            IconButton(onClick = { expanded = false }) {
+                                Icon(
+                                    // TODO(redesign-11): swap for Icons.Rounded.ExpandLess once
+                                    // the Material Symbols icon set lands
+                                    // (docs/tickets/redesign-11-material-symbols-icons.md)
+                                    imageVector = Icons.Rounded.KeyboardArrowUp,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
                             }
-                        )
-                    }) {
-                        val ch =
-                            if (chapterStart != chapterEnd) "$chapterStart - $chapterEnd" else "$chapterStart"
-                        Text(text = "Synchronise specific chapters ($ch)")
-                    }
+                        }
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // First chapter to download
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("From", modifier = Modifier.width(64.dp))
-                        Slider(
-                            value = chapterStart.toFloat(),
-                            onValueChange = { chapterStart = it.toInt() },
+                        // One two-thumb slider replaces the old From/To Slider pair. `steps` is
+                        // required, not optional: without it the slider is continuous and
+                        // dragging the two thumbs together - the only way to reach
+                        // ChapterSelection.One below - becomes practically unreachable. `steps`
+                        // counts the values *between* the endpoints, hence totalChapters - 2.
+                        // RangeSlider enforces start <= endInclusive itself, so unlike the old
+                        // "To" Slider there's no need to clamp valueRange against chapterStart.
+                        RangeSlider(
+                            value = chapterStart.toFloat()..chapterEnd.toFloat(),
+                            onValueChange = { range ->
+                                chapterStart = range.start.roundToInt()
+                                chapterEnd = range.endInclusive.roundToInt()
+                            },
                             valueRange = 1f..totalChapters.toFloat(),
+                            steps = (totalChapters - 2).coerceAtLeast(0),
                         )
-                    }
 
-                    // Last chapter to download
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("To", modifier = Modifier.width(64.dp))
-                        Slider(
-                            value = chapterEnd.toFloat(),
-                            onValueChange = { chapterEnd = it.toInt() },
-                            valueRange = chapterStart.toFloat()..totalChapters.toFloat(),
-                        )
+                        // Track bounds, not the current selection - the selection is reflected
+                        // in the button label below.
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "1",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = "$totalChapters",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        FilledTonalButton(
+                            onClick = {
+                                onUserConfirmation(
+                                    if (chapterStart == chapterEnd) {
+                                        ChapterSelection.One(chapterStart)
+                                    } else {
+                                        ChapterSelection.Range(chapterStart, chapterEnd)
+                                    }
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = if (chapterStart == chapterEnd) {
+                                    "Download chapter $chapterStart"
+                                } else {
+                                    // U+2013 en dash, not a hyphen.
+                                    "Download chapters $chapterStart–$chapterEnd"
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -651,6 +785,26 @@ fun ConfirmChaptersDarkPreview() {
     }
 }
 
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "Ask Confirmation (Expanded)",
+)
+@Composable
+fun ConfirmChaptersExpandedPreview() {
+    ReSyncTheme {
+        ConfirmChapters(
+            storyName = "The Story Name",
+            authorName = "The Author Name",
+            initialChapterNumber = 1,
+            totalChapters = 42,
+            driverType = DriverType.ArchiveOfOurOwn,
+            onUserConfirmation = {},
+            initiallyExpanded = true,
+        )
+    }
+}
+
 @Composable
 fun DownloadingRemainingChapters(
     currentlyDownloading: Int,
@@ -668,7 +822,7 @@ fun DownloadingRemainingChapters(
 
         Text(
             text = "Fetching Story",
-            style = MaterialTheme.typography.h6,
+            style = M2MaterialTheme.typography.h6,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -686,14 +840,14 @@ fun DownloadingRemainingChapters(
             // eg. start at 45 and end ta 50, progression is from 90 to 100%.
             // Use the preview tool to understand what bounds we need, then create
             // value classes to enforce 0-indexed or 1-indexed value. Maybe.
-            CircularProgressIndicator(
+            M2CircularProgressIndicator(
                 progress = currentlyDownloading.toFloat() / totalToDownloads,
                 modifier = Modifier
                     .fillMaxSize()
             )
             Text(
                 text = "$currentlyDownloading/${totalToDownloads}\nchapters",
-                style = MaterialTheme.typography.body2,
+                style = M2MaterialTheme.typography.body2,
                 textAlign = TextAlign.Center,
             )
         }
@@ -703,7 +857,7 @@ fun DownloadingRemainingChapters(
 
             Text(
                 text = notice,
-                style = MaterialTheme.typography.body2,
+                style = M2MaterialTheme.typography.body2,
                 textAlign = TextAlign.Center,
             )
         }
@@ -746,12 +900,12 @@ fun DisplayDownloadError(
 
         Text(
             text = "Error while downloading story",
-            style = MaterialTheme.typography.h6,
+            style = M2MaterialTheme.typography.h6,
         )
 
         Text(
             text = "$storyId; $chapterId; DriverType($driverType)",
-            style = MaterialTheme.typography.body2,
+            style = M2MaterialTheme.typography.body2,
             textAlign = TextAlign.Center,
         )
 
