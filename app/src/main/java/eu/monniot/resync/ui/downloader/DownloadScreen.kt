@@ -8,6 +8,7 @@ import android.webkit.WebView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 // The rest of this file (ConfirmChapters, FetchingFirstChapterView, DownloadingRemainingChapters)
@@ -20,13 +21,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.MaterialTheme as M2MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,6 +49,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import java.io.File
 import java.lang.NumberFormatException
 
 private const val TAG = "DownloadFic"
@@ -90,9 +95,8 @@ fun DownloadScreen(
 
             downloadLogic(context, storyId, chapterId, driverType, driver, setState)
 
-            // Only call onDone if there was no error, otherwise let the user
-            // choose when to close the app.
-            onDone()
+            // Reaching DownloadState.Success is the end of the flow; onDone() is now only
+            // called from the "Done" button on the Success screen (or from onCancel below).
         } catch (e: CancellationException) {
             // Cancellation (see onCancel below) is not an error: don't render the Error
             // screen, and don't call onDone() again - onCancel already does.
@@ -162,6 +166,11 @@ fun DownloadScreen(
                 storyId,
                 chapterId
             )
+            is DownloadState.Success -> DownloadSuccess(
+                summary = state.summary,
+                onShare = { shareEpub(context, state.epubFile, state.fileName) },
+                onDone = onDone,
+            )
         }
     }
 }
@@ -172,7 +181,8 @@ fun DownloadScreen(
     2. if total chapters == 1, skip this step
        Otherwise let user choose what to download
     3. If more than one chapter selected, download remaining chapters
-    4. Build epub and upload to rm cloud
+    4. Build the epub and end on DownloadState.Success; sharing is a separate, explicit user
+       action from there (see shareEpub) rather than something this function does itself.
      */
 suspend fun downloadLogic(
     context: Context,
@@ -205,20 +215,40 @@ suspend fun downloadLogic(
     // refetching already-downloaded chapters.
     clearChapterCache(driver.storyCacheDir(storyId))
 
-    // Direct reMarkable Cloud upload was removed; Share (below) is currently the only
-    // upload path. A future reimplementation of the cloud integration plugs back in here.
-    Log.d(TAG, "Upload via Android Share")
+    // Direct reMarkable Cloud upload was removed; sharing (now behind the "Share to reMarkable"
+    // button on the Success screen, see shareEpub below) is currently the only upload path. A
+    // future reimplementation of the cloud integration plugs back in here.
     // Read how to do so at https://developer.android.com/training/secure-file-sharing
-    // 1. Save the epub on file system
     val epubFile = context.filesDir.resolve("epub/$fileName")
     epubFile.parentFile?.mkdir()
     epubFile.writeBytes(epub)
 
-    // 2. Initiate intent to share epub file
+    val storyName = chaptersInEpub.first().storyName
+    val chapterNums = chaptersInEpub.map { it.num }
+    val summary = when {
+        wholeStory ->
+            "$storyName saved as an EPUB, ready to send to reMarkable."
+        chapterNums.size == 1 ->
+            "$storyName — chapter ${chapterNums.first()} saved as an EPUB, ready to send to reMarkable."
+        else ->
+            "$storyName — chapters ${chapterNums.min()}–${chapterNums.max()} saved as an EPUB, ready to send to reMarkable."
+    }
+
+    setState(DownloadState.Success(epubFile, fileName, storyName, summary))
+}
+
+/**
+ * Fires the Android Share sheet for [file] (an EPUB previously written by [downloadLogic]),
+ * offering it to whatever app the user picks - typically the reMarkable app. Held verbatim from
+ * the code this replaced: the `ClipData`/`EXTRA_STREAM` duplication and the
+ * `FLAG_GRANT_READ_URI_PERMISSION` flag are load-bearing for the reMarkable app, not incidental.
+ */
+private fun shareEpub(context: Context, file: File, fileName: String) {
+    // Read how to do so at https://developer.android.com/training/secure-file-sharing
     val fileUri = FileProvider.getUriForFile(
         context,
         "eu.monniot.resync.fileprovider",
-        epubFile
+        file
     )
 
     val shareIntent: Intent = Intent().apply {
@@ -473,6 +503,13 @@ sealed interface DownloadState {
     ) : DownloadState
 
     data class Error(val throwable: Throwable) : DownloadState
+
+    data class Success(
+        val epubFile: File,
+        val fileName: String,
+        val storyName: String,
+        val summary: String,
+    ) : DownloadState
 }
 
 
@@ -1043,6 +1080,143 @@ fun DisplayDownloadErrorPreview() {
             storyId = StoryId(27855042),
             chapterId = ChapterId(68198782),
             driverType = DriverType.ArchiveOfOurOwn
+        )
+    }
+}
+
+/**
+ * The end of the download flow: a static (no entrance animation - see
+ * docs/tickets/redesign-12-motion-and-animation.md) confirmation that the epub was built, with
+ * sharing as an explicit action rather than an automatic side effect of the download completing.
+ */
+@Composable
+fun DownloadSuccess(
+    summary: String,
+    onShare: () -> Unit,
+    onDone: () -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(28.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Story ready",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onShare,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Share,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Share to reMarkable")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(
+            onClick = onDone,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Done")
+        }
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Success (whole story, Light)"
+)
+@Composable
+fun DownloadSuccessWholeStoryPreview() {
+    ReSyncTheme {
+        DownloadSuccess(
+            summary = "The Story Name saved as an EPUB, ready to send to reMarkable.",
+            onShare = {},
+            onDone = {},
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Success (single chapter, Light)"
+)
+@Composable
+fun DownloadSuccessSingleChapterPreview() {
+    ReSyncTheme {
+        DownloadSuccess(
+            summary = "The Story Name — chapter 3 saved as an EPUB, ready to send to reMarkable.",
+            onShare = {},
+            onDone = {},
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Success (range, Light)"
+)
+@Composable
+fun DownloadSuccessRangePreview() {
+    ReSyncTheme {
+        DownloadSuccess(
+            summary = "The Story Name — chapters 3–7 saved as an EPUB, ready to send to reMarkable.",
+            onShare = {},
+            onDone = {},
+        )
+    }
+}
+
+@Preview(
+    showBackground = true,
+    name = "Success (range, Dark)"
+)
+@Composable
+fun DownloadSuccessRangeDarkPreview() {
+    ReSyncTheme(darkTheme = true) {
+        DownloadSuccess(
+            summary = "The Story Name — chapters 3–7 saved as an EPUB, ready to send to reMarkable.",
+            onShare = {},
+            onDone = {},
         )
     }
 }
