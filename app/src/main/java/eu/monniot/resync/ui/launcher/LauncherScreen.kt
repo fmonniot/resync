@@ -2,7 +2,7 @@ package eu.monniot.resync.ui.launcher
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.Icons
@@ -15,12 +15,17 @@ import eu.monniot.resync.ui.ReSyncTheme
 import eu.monniot.resync.ui.icons.LibraryBooks
 
 
-enum class LauncherScreenItem(val sectionName: String, val icon: ImageVector) {
-    Search("Search", Icons.Filled.Search),
-    Consolidate("Consolidate", LibraryBooks),
-    Settings("Settings", Icons.Default.Settings)
+enum class LauncherScreenItem(
+    val sectionName: String,
+    val topBarTitle: String,
+    val icon: ImageVector,
+) {
+    Search("Search", "reSync", Icons.Filled.Search),
+    Consolidate("Consolidate", "Documents", LibraryBooks),
+    Settings("Settings", "Settings", Icons.Default.Settings)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LauncherScreen(
     initialScreenItem: LauncherScreenItem = LauncherScreenItem.Search
@@ -28,7 +33,9 @@ fun LauncherScreen(
     var selectedItem by remember { mutableStateOf(initialScreenItem) }
 
     Scaffold(
-        topBar = {},
+        topBar = {
+            TopAppBar(title = { Text(selectedItem.topBarTitle) })
+        },
         content = { padding ->
             Box(modifier = Modifier.padding(padding)) {
                 when (selectedItem) {
@@ -39,28 +46,15 @@ fun LauncherScreen(
             }
         },
         bottomBar = {
-            BottomNavigation {
-
-                BottomNavigationItem(
-                    icon = { Icon(LauncherScreenItem.Search.icon, contentDescription = null) },
-                    label = { Text(LauncherScreenItem.Search.sectionName) },
-                    selected = selectedItem == LauncherScreenItem.Search,
-                    onClick = { selectedItem = LauncherScreenItem.Search }
-                )
-
-                BottomNavigationItem(
-                    icon = { Icon(LauncherScreenItem.Consolidate.icon, contentDescription = null) },
-                    label = { Text(LauncherScreenItem.Consolidate.sectionName) },
-                    selected = selectedItem == LauncherScreenItem.Consolidate,
-                    onClick = { selectedItem = LauncherScreenItem.Consolidate }
-                )
-
-                BottomNavigationItem(
-                    icon = { Icon(LauncherScreenItem.Settings.icon, contentDescription = null) },
-                    label = { Text(LauncherScreenItem.Settings.sectionName) },
-                    selected = selectedItem == LauncherScreenItem.Settings,
-                    onClick = { selectedItem = LauncherScreenItem.Settings }
-                )
+            NavigationBar {
+                LauncherScreenItem.entries.forEach { item ->
+                    NavigationBarItem(
+                        selected = selectedItem == item,
+                        onClick = { selectedItem = item },
+                        icon = { Icon(item.icon, contentDescription = null) },
+                        label = { Text(item.sectionName) },
+                    )
+                }
             }
         }
     )
@@ -77,6 +71,20 @@ fun LauncherScreen(
 fun LauncherSearchPreview() {
     ReSyncTheme {
         LauncherScreen(LauncherScreenItem.Search)
+    }
+}
+
+
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+    name = "Launcher - Consolidate - Pixel 3"
+)
+@Composable
+fun LauncherConsolidatePreview() {
+    ReSyncTheme {
+        LauncherScreen(LauncherScreenItem.Consolidate)
     }
 }
 
