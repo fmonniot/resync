@@ -168,10 +168,8 @@ fun DownloadScreen(
         // Shared-axis-X screen transition between DownloadState states. contentKey = { it::class }
         // is load-bearing: DownloadingRemainingChapters emits a new instance per chapter, and
         // without keying on the class alone every chapter update would re-trigger the full
-        // screen transition instead of just updating in place (see
-        // docs/tickets/redesign-12-motion-and-animation.md item 3). The `s` lambda parameter is
-        // used below, not `state` directly, for the same reason as the Search<->Download
-        // transition.
+        // screen transition instead of just updating in place. The `s` lambda parameter is used
+        // below, not `state` directly, for the same reason as the Search<->Download transition.
         AnimatedContent(
             targetState = state,
             contentKey = { it::class },
@@ -1356,10 +1354,9 @@ fun DisplayDownloadErrorExpandedDarkPreview() {
 }
 
 /**
- * The end of the download flow: a static (no entrance animation - see
- * docs/tickets/redesign-12-motion-and-animation.md) confirmation that the epub was built, with
- * sharing as an explicit action rather than an automatic side effect of the download completing.
- * The tonal circle scales/fades in on first composition (see [DownloadSuccess]'s
+ * The end of the download flow: a static (no entrance animation) confirmation that the epub was
+ * built, with sharing as an explicit action rather than an automatic side effect of the download
+ * completing. The tonal circle scales/fades in on first composition (see [DownloadSuccess]'s
  * `circleVisibleState`), landing just after the screen transition into this state settles.
  */
 @Composable

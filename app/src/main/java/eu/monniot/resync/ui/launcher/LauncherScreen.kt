@@ -23,12 +23,11 @@ import androidx.compose.ui.tooling.preview.Devices
 import eu.monniot.resync.ui.ReSyncTheme
 
 
-// Nav bar approximates the design's FILL 0 -> FILL 1 swap on the active item (Material Symbols
-// variable font) using the Outlined/Rounded style families, since material-icons-extended has no
-// variable-fill glyphs. Consolidate deliberately keeps the books metaphor here rather than the
-// design's `sync` glyph - see the material-symbols-icons ticket's "Consolidate nav icon" section -
-// reusing `sync` for the nav bar would collide with its meaning as the Search screen's primary
-// action.
+// Nav bar approximates a FILL 0 -> FILL 1 swap on the active item (Material Symbols variable
+// font) using the Outlined/Rounded style families, since material-icons-extended has no
+// variable-fill glyphs. Consolidate deliberately keeps the books metaphor here rather than a
+// `sync` glyph: reusing `sync` for the nav bar would collide with its meaning as the Search
+// screen's primary action.
 enum class LauncherScreenItem(
     val sectionName: String,
     val topBarTitle: String,
@@ -74,9 +73,9 @@ fun LauncherScreen(
                         onClick = { selectedItem = item },
                         icon = {
                             // The pill indicator behind this icon animates for free via
-                            // NavigationBarItem (no colors = override suppressing it, per
-                            // redesign-01). This AnimatedContent only handles the outline<->filled
-                            // icon crossfade on top of it.
+                            // NavigationBarItem (no colors override suppressing it). This
+                            // AnimatedContent only handles the outline<->filled icon crossfade on
+                            // top of it.
                             AnimatedContent(
                                 targetState = itemSelected,
                                 transitionSpec = {

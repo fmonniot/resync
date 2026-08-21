@@ -13,7 +13,31 @@ import androidx.compose.ui.graphics.Color
 //
 // Transcribed from the "Calm Reader v2" design (Claude Design project
 // 274c396b-cc57-4eb1-8e13-4bea2287765d), which specifies these as OKLCH; the sRGB hex below is
-// the pre-computed conversion, see redesign-00-dependency-and-theme.md for the source tables.
+// the pre-computed conversion. Source (role -> OKLCH -> sRGB hex used below):
+//
+// Light: primary oklch(47% 0.18 276) #4547BD, primaryContainer oklch(91% 0.045 276) #D9DFFF,
+// onPrimaryContainer oklch(24% 0.09 276) #161749, secondaryContainer oklch(89% 0.05 276) #D1D9FD,
+// onSecondaryContainer oklch(24% 0.07 276) #171A40, surface oklch(98.5% 0.004 276) #F9FAFD,
+// onSurface oklch(19% 0.01 276) #121318, surfaceContainerLow oklch(96.5% 0.006 276) #F2F3F8,
+// surfaceContainer oklch(95% 0.008 276) #EDEEF4, surfaceContainerHigh oklch(92% 0.012 276) #E2E4ED,
+// surfaceContainerHighest oklch(90% 0.014 276) #DBDDE8, onSurfaceVariant oklch(42% 0.02 276)
+// #4A4C58, outline oklch(70% 0.015 276) #9C9EA8, outlineVariant oklch(84% 0.012 276) #C8CAD3,
+// error oklch(48% 0.19 25) #B00A1D, errorContainer oklch(93% 0.04 25) #FFDEDB, onErrorContainer
+// oklch(28% 0.08 25) #491513.
+//
+// Dark: primary oklch(82% 0.09 276) #B4C0FF, onPrimary oklch(28% 0.10 276) #1E2059,
+// primaryContainer oklch(34% 0.10 276) #2B306A, onPrimaryContainer oklch(90% 0.05 276) #D4DCFF,
+// secondaryContainer oklch(35% 0.06 276) #32375A, onSecondaryContainer oklch(90% 0.04 276)
+// #D6DCF9, surface oklch(16% 0.006 276) #0C0D10, onSurface oklch(93% 0.004 276) #E7E8EA,
+// surfaceContainerLow oklch(19% 0.008 276) #131417, surfaceContainer oklch(21% 0.010 276) #17181D,
+// surfaceContainerHigh oklch(26% 0.014 276) #22242B, surfaceContainerHighest oklch(30% 0.016 276)
+// #2B2D36, onSurfaceVariant oklch(74% 0.014 276) #A8AAB4, outline oklch(46% 0.016 276) #555761,
+// outlineVariant oklch(33% 0.014 276) #33353D, error oklch(78% 0.13 25) #FF958D, errorContainer
+// oklch(34% 0.09 25) #5E211F, onErrorContainer oklch(90% 0.045 25) #FBD3CF.
+//
+// Two of these sit marginally outside the sRGB gamut and were clipped on one channel during
+// conversion (light errorContainer, blue channel 1.026; dark error, red channel 1.007) - the hue
+// shift is well under one perceptual step, so use the hex values above rather than re-deriving.
 //
 // Roles the design doesn't style directly (secondary, tertiary, inverse*, background, scrim, ...)
 // are filled in on the same ~276deg hue as primary, so M3 components the design never touches

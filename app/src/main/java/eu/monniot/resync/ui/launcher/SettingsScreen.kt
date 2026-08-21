@@ -36,8 +36,7 @@ fun SettingsView() {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
-                // Placeholder — no backing functionality yet. See
-                // docs/tickets/redesign-10-settings-screen.md; wire up when the cloud
+                // Placeholder — no backing functionality yet. Wire up when the cloud
                 // integration lands (CLAUDE.md § reMarkable Cloud).
                 onClick = {},
             )
@@ -54,8 +53,7 @@ fun SettingsView() {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
-                // Placeholder — no backing functionality yet. See
-                // docs/tickets/redesign-10-settings-screen.md; wire up when the cloud
+                // Placeholder — no backing functionality yet. Wire up when the cloud
                 // integration lands (CLAUDE.md § reMarkable Cloud).
                 onClick = {},
             )
@@ -72,8 +70,7 @@ fun SettingsView() {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
-                // Placeholder — no backing functionality yet. See
-                // docs/tickets/redesign-10-settings-screen.md; wire up when the cloud
+                // Placeholder — no backing functionality yet. Wire up when the cloud
                 // integration lands (CLAUDE.md § reMarkable Cloud).
                 onClick = {},
             )

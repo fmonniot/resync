@@ -56,11 +56,12 @@ fun SearchStoryScreen() {
     val driverType = remember { mutableStateOf(DriverType.ArchiveOfOurOwn) }
     val storySelected = remember { mutableStateOf(false) }
 
-    // Shared-axis-X screen transition between the search form and the download flow. The
-    // AnimatedContent's `selected` lambda parameter is used to pick the branch below - not
-    // storySelected.value directly - otherwise both the outgoing and incoming frames would
-    // render the new screen and the transition would look broken (see
-    // docs/tickets/redesign-12-motion-and-animation.md item 2).
+    // Shared-axis-X screen transition between the search form and the download flow. Plain
+    // AnimatedContent rather than Navigation-Compose: this screen has no back stack, just two
+    // mutually-exclusive states, so a nav graph would be pure overhead. The `selected` lambda
+    // parameter is used to pick the branch below - not storySelected.value directly - otherwise
+    // both the outgoing and incoming frames would render the new screen and the transition would
+    // look broken.
     AnimatedContent(
         targetState = storySelected.value,
         transitionSpec = {
@@ -158,6 +159,9 @@ fun StorySelectionView(
 
         Spacer(Modifier.height(8.dp))
 
+        // SingleChoiceSegmentedButtonRow weights segments equally rather than sizing each to its
+        // content, so a longer label here (e.g. "Archive of Our Own") may need shortening if it
+        // wraps or gets clipped at small widths.
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             DriverType.entries.forEachIndexed { index, driver ->
                 SegmentedButton(
