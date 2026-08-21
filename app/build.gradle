@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.compose)
+    id 'jacoco'
 }
 
 // Release signing is machine-specific: the keystore and its credentials live outside version
@@ -133,4 +134,46 @@ dependencies {
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso.core
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+// JVM unit test coverage only (testDebugUnitTest) — the Room DB tests that require a real
+// Android environment live in connectedAndroidTest and aren't covered here.
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+    group = 'verification'
+    description = 'Generates an HTML/XML JaCoco coverage report from the debug unit tests.'
+
+    reports {
+        xml.required = true
+        html.required = true
+    }
+
+    // Drop generated code (R/BuildConfig, Room's *_Impl DAOs/database, Compose's synthetic
+    // ComposableSingletons/LiveLiterals classes) so it doesn't dilute the coverage numbers.
+    def coverageExcludes = [
+            '**/R.class',
+            '**/R$*.class',
+            '**/BuildConfig.*',
+            '**/Manifest*.*',
+            'android/**/*.*',
+            '**/*_Impl.class',
+            '**/*_Impl$*.class',
+            '**/*ComposableSingletons*.*',
+            '**/*LiveLiterals*.*',
+    ]
+
+    def javaClasses = fileTree(layout.buildDirectory.dir('intermediates/javac/debug/compileDebugJavaWithJavac/classes')) {
+        exclude coverageExcludes
+    }
+    def kotlinClasses = fileTree(layout.buildDirectory.dir('tmp/kotlin-classes/debug')) {
+        exclude coverageExcludes
+    }
+
+    classDirectories.setFrom(files(javaClasses, kotlinClasses))
+    sourceDirectories.setFrom(files("$projectDir/src/main/java"))
+    executionData.setFrom(layout.buildDirectory.file('jacoco/testDebugUnitTest.exec'))
 }
