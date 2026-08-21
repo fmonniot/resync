@@ -26,7 +26,9 @@ import eu.monniot.resync.downloader.*
 import eu.monniot.resync.makeEpub
 import eu.monniot.resync.ui.KeepScreenOn
 import eu.monniot.resync.ui.ReSyncTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import java.lang.NumberFormatException
 
@@ -63,7 +65,10 @@ fun DownloadScreen(
     // We can't really do background processing either as we are using a WebView.
     KeepScreenOn()
 
+    var downloadJob by remember { mutableStateOf<Job?>(null) }
+
     LaunchedEffect(key1 = storyId, key2 = chapterId) {
+        downloadJob = coroutineContext[Job]
         try {
             // wait for the driver to be attached to a running WebView
             driver.ready()
@@ -73,11 +78,20 @@ fun DownloadScreen(
             // Only call onDone if there was no error, otherwise let the user
             // choose when to close the app.
             onDone()
+        } catch (e: CancellationException) {
+            // Cancellation (see onCancel below) is not an error: don't render the Error
+            // screen, and don't call onDone() again - onCancel already does.
+            throw e
         } catch (e: Throwable) {
-            println("Error caught when downloading story")
-            e.printStackTrace()
+            Log.e(TAG, "Error caught when downloading story", e)
             setState(DownloadState.Error(e))
         }
+    }
+
+    val onCancel: () -> Unit = {
+        downloadJob?.cancel()
+        clearChapterCache(driver.storyCacheDir(storyId))
+        onDone()
     }
 
     Box {
@@ -117,11 +131,13 @@ fun DownloadScreen(
                 state.totalChapters,
                 state.driverType,
                 state.onUserConfirmation,
+                onCancel = onCancel,
             )
             is DownloadState.DownloadingRemainingChapters -> DownloadingRemainingChapters(
                 currentlyDownloading = state.currentlyDownloading,
                 totalToDownloads = state.totalToDownloads,
                 notice = state.notice,
+                onCancel = onCancel,
             )
             is DownloadState.Error -> DisplayDownloadError(
                 error = state.throwable,
@@ -488,6 +504,7 @@ fun ConfirmChapters(
     totalChapters: Int,
     driverType: DriverType,
     onUserConfirmation: (ChapterSelection) -> Unit,
+    onCancel: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -639,6 +656,7 @@ fun DownloadingRemainingChapters(
     currentlyDownloading: Int,
     totalToDownloads: Int,
     notice: String?,
+    onCancel: () -> Unit = {},
 ) {
     Column(
         verticalArrangement = Arrangement.Center,
