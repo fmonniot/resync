@@ -12,12 +12,20 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+// M3 ListItem/MaterialTheme are aliased to avoid clashing with the M2 `androidx.compose.material.*`
+// wildcard import above, which is still needed for ModalBottomSheetLayout/PullRefreshIndicator
+// (M2 usage removed in redesign-09) and for the M2 `ListItem` used by `DocumentBottomSheetView`.
+import androidx.compose.material3.Icon as M3Icon
+import androidx.compose.material3.ListItem as M3ListItem
+import androidx.compose.material3.MaterialTheme as M3MaterialTheme
+import androidx.compose.material3.Text as M3Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -96,28 +104,25 @@ fun ConsolidateView(
 ) {
     when (initialized) {
         ViewState.NoAccount ->
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    Icons.Rounded.Warning,
-                    modifier = Modifier
-                        .fillMaxWidth(0.5f)
-                        .aspectRatio(1f)
-                        .padding(bottom = 16.dp),
-                    contentDescription = "No reMarkable account set",
-                    tint = MaterialTheme.colors.onSurface.copy(alpha = 0.18f)
-                )
-
-                Text("No reMarkable account set")
-            }
+            ConsolidateEmptyState(
+                // TODO(redesign-11): swap for Icons.Rounded.CloudOff once the Material Symbols
+                // icon set lands (docs/tickets/redesign-11-material-symbols-icons.md) -
+                // material-icons-core has no "cloud_off" glyph.
+                icon = null,
+                title = "No reMarkable account set",
+                subtitle = "Use the Share sheet after downloading a story to send it to reMarkable for now.",
+            )
 
         ViewState.NotInitialized ->
             // TODO Is this feature still something I need ?
-            Column {
-                Text("TODO: Select a folder")
+            Column(modifier = Modifier.fillMaxSize()) {
+                M3Text(
+                    text = "TODO: Select a folder",
+                    style = M3MaterialTheme.typography.bodyLarge,
+                    color = M3MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
         ViewState.Ok -> {
@@ -146,24 +151,35 @@ fun ConsolidateView(
                 Box(Modifier.pullRefresh(pullRefreshState)) {
                     LazyColumn(Modifier.fillMaxWidth()) {
                         if (documents.isEmpty()) {
-                            // TODO Fill max height, otherwise the pull is hard to do
-                            // (and you have to know the trick)
                             item {
-                                Text("No documents yet, pull to refresh")
+                                ConsolidateEmptyState(
+                                    // TODO(redesign-11): swap for Icons.Rounded.Inbox once the
+                                    // Material Symbols icon set lands
+                                    // (docs/tickets/redesign-11-material-symbols-icons.md) -
+                                    // material-icons-core has no "inbox" glyph.
+                                    icon = null,
+                                    title = "No documents yet",
+                                    subtitle = "Pull down to refresh",
+                                    modifier = Modifier.fillParentMaxSize(),
+                                )
                             }
                         } else {
 
                             // TODO Sort and group documents alphabetically
                             items(documents) { doc ->
-                                ListItem(
-                                    text = { Text(doc.title) },
-                                    secondaryText = {
+                                M3ListItem(
+                                    headlineContent = { M3Text(doc.title) },
+                                    supportingContent = {
                                         // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
                                         // See also GroupedDocument data class
                                         val text =
                                             doc.chapters.joinToString { FileName.formatChapters(it) }
-                                        Text(text)
+                                        M3Text(text)
                                     },
+                                    // TODO(redesign-11): add a leading Icons.Rounded.Description
+                                    // once the Material Symbols icon set lands
+                                    // (docs/tickets/redesign-11-material-symbols-icons.md) -
+                                    // material-icons-core has no "description" glyph.
                                     modifier = Modifier.clickable {
                                         bottomSheetDocument = doc
                                         coroutineScope.launch {
@@ -179,6 +195,46 @@ fun ConsolidateView(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ConsolidateEmptyState(
+    icon: ImageVector?,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier.fillMaxSize(),
+) {
+    Column(
+        modifier = modifier.padding(horizontal = 32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (icon != null) {
+            M3Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = M3MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        M3Text(
+            text = title,
+            style = M3MaterialTheme.typography.titleMedium,
+            color = M3MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        M3Text(
+            text = subtitle,
+            style = M3MaterialTheme.typography.bodyMedium,
+            color = M3MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -279,7 +335,10 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
 
     private val dao: DocumentsDao
     private val isRefreshing = MutableStateFlow(false)
-    private val isInitialized = mutableStateOf(ViewState.NotInitialized)
+    // The reMarkable Cloud integration was removed (see CLAUDE.md), so there is genuinely no
+    // account to be found on startup. `NotInitialized` (folder selection) has no code path that
+    // reaches it today; it's kept as an anchor point for a future cloud reimplementation.
+    private val isInitialized = mutableStateOf(ViewState.NoAccount)
 
     val initialized: State<ViewState>
         get() = isInitialized
@@ -359,6 +418,7 @@ fun ConsolidateViewUninitializedPreview() {
     showBackground = true,
     device = Devices.PIXEL_3,
     showSystemUi = true,
+    name = "No Account (Light)",
 )
 @Composable
 fun ConsolidateViewNoAccountPreview() {
@@ -371,10 +431,37 @@ fun ConsolidateViewNoAccountPreview() {
     showBackground = true,
     device = Devices.PIXEL_3,
     showSystemUi = true,
+    name = "No Account (Dark)",
+)
+@Composable
+fun ConsolidateViewNoAccountDarkPreview() {
+    ReSyncTheme(darkTheme = true) {
+        ConsolidateView(ViewState.NoAccount, false, emptyList())
+    }
+}
+
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+    name = "No Documents (Light)",
 )
 @Composable
 fun ConsolidateViewInitializedNoDocsPreview() {
     ReSyncTheme {
+        ConsolidateView(ViewState.Ok, false, emptyList())
+    }
+}
+
+@Preview(
+    showBackground = true,
+    device = Devices.PIXEL_3,
+    showSystemUi = true,
+    name = "No Documents (Dark)",
+)
+@Composable
+fun ConsolidateViewInitializedNoDocsDarkPreview() {
+    ReSyncTheme(darkTheme = true) {
         ConsolidateView(ViewState.Ok, false, emptyList())
     }
 }
