@@ -3,7 +3,8 @@ package eu.monniot.resync
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import eu.monniot.resync.ui.ReSyncTheme
 import eu.monniot.resync.ui.launcher.LauncherScreen
 
@@ -14,7 +15,7 @@ class LauncherActivity : AppCompatActivity() {
 
         setContent(null) {
             ReSyncTheme {
-                Surface(color = MaterialTheme.colors.background) {
+                Surface(color = MaterialTheme.colorScheme.background) {
 
                     LauncherScreen()
                 }

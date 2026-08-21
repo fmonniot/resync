@@ -4,8 +4,8 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import eu.monniot.resync.downloader.ChapterId
 import eu.monniot.resync.downloader.DriverType
 import eu.monniot.resync.downloader.StoryId
@@ -24,7 +24,7 @@ class DeepLinkActivity : AppCompatActivity() {
         setContent(null) {
             ReSyncTheme {
                 // A surface container using the 'background' color from the theme
-                Surface(color = MaterialTheme.colors.background) {
+                Surface(color = MaterialTheme.colorScheme.background) {
                     DownloadScreen(
                         driverType,
                         storyId,
