@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.compose)
     id 'jacoco'
@@ -34,7 +33,7 @@ def gitCommitCount = {
 }()
 
 android {
-    namespace 'eu.monniot.resync'
+    namespace = 'eu.monniot.resync'
 
     signingConfigs {
         if (hasReleaseSigningConfig) {
@@ -64,19 +63,16 @@ android {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig hasReleaseSigningConfig ? signingConfigs.release : signingConfigs.debug
+            signingConfig = hasReleaseSigningConfig ? signingConfigs.release : signingConfigs.debug
         }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
     buildFeatures {
-        compose true
-        buildConfig true
+        compose = true
+        buildConfig = true
     }
 
     testOptions {
@@ -88,7 +84,7 @@ android {
 
 repositories {
     maven {
-        url 'https://github.com/psiegman/mvn-repo/raw/master/releases'
+        url = 'https://github.com/psiegman/mvn-repo/raw/master/releases'
     }
 }
 
