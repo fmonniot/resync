@@ -7,7 +7,6 @@ kotlinxCollectionsImmutable = "0.5.1"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
 material = "1.14.0"
-accompanistSwiperefresh = "0.36.0"
 composeBom = "2026.08.00"
 lifecycleViewmodelCompose = "2.10.0"
 activityCompose = "1.13.0"
@@ -28,7 +27,6 @@ room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanistSwiperefresh" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-material = { group = "androidx.compose.material", name = "material" }
