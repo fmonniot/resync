@@ -1,5 +1,12 @@
 package eu.monniot.resync.ui.launcher
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,10 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import eu.monniot.resync.downloader.ChapterId
 import eu.monniot.resync.downloader.DriverType
 import eu.monniot.resync.downloader.StoryId
+import eu.monniot.resync.ui.EmphasizedEasing
 import eu.monniot.resync.ui.ReSyncTheme
 import eu.monniot.resync.ui.downloader.DownloadScreen
 
@@ -47,20 +56,36 @@ fun SearchStoryScreen() {
     val driverType = remember { mutableStateOf(DriverType.ArchiveOfOurOwn) }
     val storySelected = remember { mutableStateOf(false) }
 
-    if (storySelected.value) {
-        // Safe: the Sync button in StorySelectionView is only enabled when
-        // canSyncStory(storyId, chapterId) holds, which guarantees both fields parse as Int.
-        val sid = StoryId(storyId.value.text.toInt())
-        val cid = ChapterId(chapterId.value.text.ifBlank { null }?.toInt())
-        DownloadScreen(
-            driverType = driverType.value,
-            storyId = sid,
-            chapterId = cid,
-            onDone = { storySelected.value = false }
-        )
-    } else {
-        StorySelectionView(storyId, chapterId, driverType) {
-            storySelected.value = true
+    // Shared-axis-X screen transition between the search form and the download flow. The
+    // AnimatedContent's `selected` lambda parameter is used to pick the branch below - not
+    // storySelected.value directly - otherwise both the outgoing and incoming frames would
+    // render the new screen and the transition would look broken (see
+    // docs/tickets/redesign-12-motion-and-animation.md item 2).
+    AnimatedContent(
+        targetState = storySelected.value,
+        transitionSpec = {
+            val offsetSpec = tween<IntOffset>(300, easing = EmphasizedEasing)
+            val fadeSpec = tween<Float>(300, easing = EmphasizedEasing)
+            (slideInHorizontally(offsetSpec) { it / 4 } + fadeIn(fadeSpec)) togetherWith
+                    (slideOutHorizontally(offsetSpec) { -it / 4 } + fadeOut(fadeSpec))
+        },
+        label = "searchDownload",
+    ) { selected ->
+        if (selected) {
+            // Safe: the Sync button in StorySelectionView is only enabled when
+            // canSyncStory(storyId, chapterId) holds, which guarantees both fields parse as Int.
+            val sid = StoryId(storyId.value.text.toInt())
+            val cid = ChapterId(chapterId.value.text.ifBlank { null }?.toInt())
+            DownloadScreen(
+                driverType = driverType.value,
+                storyId = sid,
+                chapterId = cid,
+                onDone = { storySelected.value = false }
+            )
+        } else {
+            StorySelectionView(storyId, chapterId, driverType) {
+                storySelected.value = true
+            }
         }
     }
 }

@@ -7,6 +7,19 @@ import android.os.Build
 import android.util.Log
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,7 +31,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Error
-import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.*
@@ -26,12 +38,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -41,6 +55,7 @@ import eu.monniot.resync.BuildConfig
 import eu.monniot.resync.FileName
 import eu.monniot.resync.downloader.*
 import eu.monniot.resync.makeEpub
+import eu.monniot.resync.ui.EmphasizedEasing
 import eu.monniot.resync.ui.KeepScreenOn
 import eu.monniot.resync.ui.ReSyncTheme
 import kotlinx.coroutines.CancellationException
@@ -150,41 +165,60 @@ fun DownloadScreen(
             driver.installGrabber(webView)
         }
 
-        when (state) {
-            is DownloadState.FetchingFirstChapter -> FetchingFirstChapterView(
-                storyId = state.storyId,
-                chapterId = state.chapterId,
-                onCancel = onCancel,
-            )
-            is DownloadState.ConfirmChapters -> ConfirmChapters(
-                state.storyName,
-                state.authorName,
-                state.initialChapterNumber,
-                state.totalChapters,
-                state.driverType,
-                state.onUserConfirmation,
-                onCancel = onCancel,
-            )
-            is DownloadState.DownloadingRemainingChapters -> DownloadingRemainingChapters(
-                storyName = state.storyName,
-                currentlyDownloading = state.currentlyDownloading,
-                totalToDownloads = state.totalToDownloads,
-                notice = state.notice,
-                onCancel = onCancel,
-            )
-            is DownloadState.Error -> DisplayDownloadError(
-                error = state.throwable,
-                driverType = driverType,
-                storyId = storyId,
-                chapterId = chapterId,
-                onRetry = onRetry,
-                onDone = onCancel,
-            )
-            is DownloadState.Success -> DownloadSuccess(
-                summary = state.summary,
-                onShare = { shareEpub(context, state.epubFile, state.fileName) },
-                onDone = onDone,
-            )
+        // Shared-axis-X screen transition between DownloadState states. contentKey = { it::class }
+        // is load-bearing: DownloadingRemainingChapters emits a new instance per chapter, and
+        // without keying on the class alone every chapter update would re-trigger the full
+        // screen transition instead of just updating in place (see
+        // docs/tickets/redesign-12-motion-and-animation.md item 3). The `s` lambda parameter is
+        // used below, not `state` directly, for the same reason as the Search<->Download
+        // transition.
+        AnimatedContent(
+            targetState = state,
+            contentKey = { it::class },
+            transitionSpec = {
+                val offsetSpec = tween<IntOffset>(300, easing = EmphasizedEasing)
+                val fadeSpec = tween<Float>(300, easing = EmphasizedEasing)
+                (slideInHorizontally(offsetSpec) { it / 4 } + fadeIn(fadeSpec)) togetherWith
+                        (slideOutHorizontally(offsetSpec) { -it / 4 } + fadeOut(fadeSpec))
+            },
+            label = "downloadState",
+        ) { s ->
+            when (s) {
+                is DownloadState.FetchingFirstChapter -> FetchingFirstChapterView(
+                    storyId = s.storyId,
+                    chapterId = s.chapterId,
+                    onCancel = onCancel,
+                )
+                is DownloadState.ConfirmChapters -> ConfirmChapters(
+                    s.storyName,
+                    s.authorName,
+                    s.initialChapterNumber,
+                    s.totalChapters,
+                    s.driverType,
+                    s.onUserConfirmation,
+                    onCancel = onCancel,
+                )
+                is DownloadState.DownloadingRemainingChapters -> DownloadingRemainingChapters(
+                    storyName = s.storyName,
+                    currentlyDownloading = s.currentlyDownloading,
+                    totalToDownloads = s.totalToDownloads,
+                    notice = s.notice,
+                    onCancel = onCancel,
+                )
+                is DownloadState.Error -> DisplayDownloadError(
+                    error = s.throwable,
+                    driverType = driverType,
+                    storyId = storyId,
+                    chapterId = chapterId,
+                    onRetry = onRetry,
+                    onDone = onCancel,
+                )
+                is DownloadState.Success -> DownloadSuccess(
+                    summary = s.summary,
+                    onShare = { shareEpub(context, s.epubFile, s.fileName) },
+                    onDone = onDone,
+                )
+            }
         }
     }
 }
@@ -657,6 +691,14 @@ fun ConfirmChapters(
     var chapterStart by remember { mutableStateOf(initialChapterNumber) }
     var chapterEnd by remember { mutableStateOf(totalChapters) }
 
+    // One chevron vector, rotated 180 degrees when expanded, shared by the collapsed
+    // TextButton's trailing icon and the expanded Card's collapse IconButton below - rather than
+    // swapping between ExpandMore/ExpandLess assets.
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "chooseChaptersChevron",
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -730,9 +772,11 @@ fun ConfirmChapters(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (!expanded) {
-                // Collapsed: a bare text-button row. No card, no "OR" divider - those only
-                // appear once expanded, below.
+            // Collapsed: a bare text-button row. No card, no "OR" divider - those only appear
+            // once expanded, below. The collapsed state is a TextButton and the expanded state
+            // is a Card - not one container that grows - so each gets its own AnimatedVisibility
+            // rather than a single container animating open.
+            AnimatedVisibility(visible = !expanded) {
                 TextButton(
                     onClick = { expanded = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -747,95 +791,106 @@ fun ConfirmChapters(
                         imageVector = Icons.Rounded.ExpandMore,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.rotate(chevronRotation),
                     )
                 }
-            } else {
-                OrDivider()
+            }
 
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = "Choose specific chapters",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(tween(300, easing = EmphasizedEasing)) + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column {
+                    OrDivider()
+
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "Choose specific chapters",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                IconButton(onClick = { expanded = false }) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ExpandMore,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.rotate(chevronRotation),
+                                    )
+                                }
+                            }
+
+                            // One two-thumb slider replaces the old From/To Slider pair. `steps`
+                            // is required, not optional: without it the slider is continuous and
+                            // dragging the two thumbs together - the only way to reach
+                            // ChapterSelection.One below - becomes practically unreachable.
+                            // `steps` counts the values *between* the endpoints, hence
+                            // totalChapters - 2. RangeSlider enforces start <= endInclusive
+                            // itself, so unlike the old "To" Slider there's no need to clamp
+                            // valueRange against chapterStart.
+                            RangeSlider(
+                                value = chapterStart.toFloat()..chapterEnd.toFloat(),
+                                onValueChange = { range ->
+                                    chapterStart = range.start.roundToInt()
+                                    chapterEnd = range.endInclusive.roundToInt()
+                                },
+                                valueRange = 1f..totalChapters.toFloat(),
+                                steps = (totalChapters - 2).coerceAtLeast(0),
                             )
-                            IconButton(onClick = { expanded = false }) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ExpandLess,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+
+                            // Track bounds, not the current selection - the selection is
+                            // reflected in the button label below.
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "1",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = "$totalChapters",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                        }
 
-                        // One two-thumb slider replaces the old From/To Slider pair. `steps` is
-                        // required, not optional: without it the slider is continuous and
-                        // dragging the two thumbs together - the only way to reach
-                        // ChapterSelection.One below - becomes practically unreachable. `steps`
-                        // counts the values *between* the endpoints, hence totalChapters - 2.
-                        // RangeSlider enforces start <= endInclusive itself, so unlike the old
-                        // "To" Slider there's no need to clamp valueRange against chapterStart.
-                        RangeSlider(
-                            value = chapterStart.toFloat()..chapterEnd.toFloat(),
-                            onValueChange = { range ->
-                                chapterStart = range.start.roundToInt()
-                                chapterEnd = range.endInclusive.roundToInt()
-                            },
-                            valueRange = 1f..totalChapters.toFloat(),
-                            steps = (totalChapters - 2).coerceAtLeast(0),
-                        )
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        // Track bounds, not the current selection - the selection is reflected
-                        // in the button label below.
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text = "1",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "$totalChapters",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        FilledTonalButton(
-                            onClick = {
-                                onUserConfirmation(
-                                    if (chapterStart == chapterEnd) {
-                                        ChapterSelection.One(chapterStart)
+                            FilledTonalButton(
+                                onClick = {
+                                    onUserConfirmation(
+                                        if (chapterStart == chapterEnd) {
+                                            ChapterSelection.One(chapterStart)
+                                        } else {
+                                            ChapterSelection.Range(chapterStart, chapterEnd)
+                                        }
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    text = if (chapterStart == chapterEnd) {
+                                        "Download chapter $chapterStart"
                                     } else {
-                                        ChapterSelection.Range(chapterStart, chapterEnd)
+                                        // U+2013 en dash, not a hyphen.
+                                        "Download chapters $chapterStart–$chapterEnd"
                                     }
                                 )
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = if (chapterStart == chapterEnd) {
-                                    "Download chapter $chapterStart"
-                                } else {
-                                    // U+2013 en dash, not a hyphen.
-                                    "Download chapters $chapterStart–$chapterEnd"
-                                }
-                            )
+                            }
                         }
                     }
                 }
@@ -929,8 +984,16 @@ fun DownloadingRemainingChapters(
             // eg. start at 45 and end ta 50, progression is from 90 to 100%.
             // Use the preview tool to understand what bounds we need, then create
             // value classes to enforce 0-indexed or 1-indexed value. Maybe.
+            //
+            // The raw ratio is backed by animateFloatAsState so the arc sweeps between chapters
+            // instead of jumping a whole chapter's worth of progress at once.
+            val animatedProgress by animateFloatAsState(
+                targetValue = currentlyDownloading.toFloat() / totalToDownloads,
+                animationSpec = tween(400),
+                label = "downloadProgress",
+            )
             CircularProgressIndicator(
-                progress = { currentlyDownloading.toFloat() / totalToDownloads },
+                progress = { animatedProgress },
                 modifier = Modifier.size(64.dp),
             )
 
@@ -1043,6 +1106,17 @@ fun DisplayDownloadError(
 
     var expanded by remember { mutableStateOf(initiallyExpanded) }
 
+    // One chevron vector, rotated 180 degrees when expanded, rather than swapping between
+    // ExpandMore/ExpandLess assets.
+    val detailsChevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "technicalDetailsChevron",
+    )
+
+    // Plays once on first composition of this screen, landing just after the ~300ms
+    // Search<->Download / DownloadState screen transition settles rather than during it.
+    val circleVisibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+
     Column(
         verticalArrangement = if (expanded) Arrangement.Top else Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1053,19 +1127,27 @@ fun DisplayDownloadError(
             .padding(horizontal = 24.dp)
             .then(if (expanded) Modifier.padding(top = 32.dp) else Modifier),
     ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.errorContainer),
-            contentAlignment = Alignment.Center,
+        AnimatedVisibility(
+            visibleState = circleVisibleState,
+            enter = scaleIn(
+                initialScale = 0.6f,
+                animationSpec = tween(200, delayMillis = 150),
+            ) + fadeIn(animationSpec = tween(200, delayMillis = 150)),
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Error,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.size(28.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Error,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -1128,37 +1210,40 @@ fun DisplayDownloadError(
             Text("Technical details")
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
-                imageVector = if (expanded) {
-                    Icons.Rounded.ExpandLess
-                } else {
-                    Icons.Rounded.ExpandMore
-                },
+                imageVector = Icons.Rounded.ExpandMore,
                 contentDescription = null,
+                modifier = Modifier.rotate(detailsChevronRotation),
             )
         }
 
-        if (expanded) {
-            Spacer(modifier = Modifier.height(8.dp))
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(tween(300, easing = EmphasizedEasing)) + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = errorDetailsText(error, driverType, storyId, chapterId),
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        lineHeight = 20.sp,
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                )
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = errorDetailsText(error, driverType, storyId, chapterId),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = 20.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                    )
+                }
             }
         }
     }
@@ -1274,6 +1359,8 @@ fun DisplayDownloadErrorExpandedDarkPreview() {
  * The end of the download flow: a static (no entrance animation - see
  * docs/tickets/redesign-12-motion-and-animation.md) confirmation that the epub was built, with
  * sharing as an explicit action rather than an automatic side effect of the download completing.
+ * The tonal circle scales/fades in on first composition (see [DownloadSuccess]'s
+ * `circleVisibleState`), landing just after the screen transition into this state settles.
  */
 @Composable
 fun DownloadSuccess(
@@ -1281,6 +1368,10 @@ fun DownloadSuccess(
     onShare: () -> Unit,
     onDone: () -> Unit,
 ) {
+    // Plays once on first composition of this screen, landing just after the ~300ms
+    // Search<->Download / DownloadState screen transition settles rather than during it.
+    val circleVisibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+
     Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1288,19 +1379,27 @@ fun DownloadSuccess(
             .fillMaxSize()
             .padding(horizontal = 24.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
+        AnimatedVisibility(
+            visibleState = circleVisibleState,
+            enter = scaleIn(
+                initialScale = 0.6f,
+                animationSpec = tween(200, delayMillis = 150),
+            ) + fadeIn(animationSpec = tween(200, delayMillis = 150)),
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(28.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
