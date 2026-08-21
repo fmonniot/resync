@@ -93,6 +93,30 @@ class SelectChaptersToDownloadTest {
     }
 
     @Test
+    fun allSelection_onArchiveOfOurOwn_waitsBetweenChapters() = runTest {
+        // Unlike allSelection_fetchesEveryOtherKnownChapter_sortedByNumber above, this uses
+        // ArchiveOfOurOwn so the inter-chapter delay(1000) branch actually runs. runTest's
+        // virtual time makes that free rather than actually slowing the test down.
+        val index = mapOf(1 to ChapterId(1), 2 to ChapterId(2), 3 to ChapterId(3))
+        val initial = chapter(1, totalChapters = 3, chapterIndex = index, chapterId = ChapterId(1))
+
+        val reader = fakeReader(
+            ChapterId(2) to chapter(2, totalChapters = 3),
+            ChapterId(3) to chapter(3, totalChapters = 3),
+        )
+
+        val (chapters, wholeStory) = selectChaptersToDownload(
+            initial,
+            DriverType.ArchiveOfOurOwn,
+            reader,
+            setState = confirmWith(ChapterSelection.All),
+        )
+
+        assertEquals(listOf(1, 2, 3), chapters.map { it.num })
+        assertTrue(wholeStory)
+    }
+
+    @Test
     fun rangeSelection_fetchesOnlyTheRequestedChapters() = runTest {
         val index = mapOf(
             1 to ChapterId(1),
@@ -116,6 +140,34 @@ class SelectChaptersToDownloadTest {
 
         assertEquals(listOf(1, 2, 3), chapters.map { it.num })
         // Chapter 4 exists and wasn't selected, so this isn't the whole story.
+        assertEquals(false, wholeStory)
+    }
+
+    @Test
+    fun rangeSelection_onArchiveOfOurOwn_waitsBetweenChapters() = runTest {
+        // Same as allSelection_onArchiveOfOurOwn_waitsBetweenChapters above, but for the Range
+        // branch's own delay(1000) call.
+        val index = mapOf(
+            1 to ChapterId(1),
+            2 to ChapterId(2),
+            3 to ChapterId(3),
+            4 to ChapterId(4),
+        )
+        val initial = chapter(1, totalChapters = 4, chapterIndex = index, chapterId = ChapterId(1))
+
+        val reader = fakeReader(
+            ChapterId(2) to chapter(2, totalChapters = 4),
+            ChapterId(3) to chapter(3, totalChapters = 4),
+        )
+
+        val (chapters, wholeStory) = selectChaptersToDownload(
+            initial,
+            DriverType.ArchiveOfOurOwn,
+            reader,
+            setState = confirmWith(ChapterSelection.Range(1, 3)),
+        )
+
+        assertEquals(listOf(1, 2, 3), chapters.map { it.num })
         assertEquals(false, wholeStory)
     }
 

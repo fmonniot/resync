@@ -147,6 +147,32 @@ class FileNameTest {
         assertEquals(expected, actual)
     }
 
+    @Test
+    fun formatChapters_noChapter_isBlank() {
+        assertEquals("", FileName.formatChapters(FileName.NoChapter))
+        assertEquals("", FileName.formatChapters(FileName.NoChapter, withPrefix = true))
+    }
+
+    @Test
+    fun formatChapters_oneChapter_withoutPrefix() {
+        assertEquals("3", FileName.formatChapters(FileName.OneChapter(3)))
+    }
+
+    @Test
+    fun formatChapters_oneChapter_withPrefix() {
+        assertEquals("Ch 3", FileName.formatChapters(FileName.OneChapter(3), withPrefix = true))
+    }
+
+    @Test
+    fun formatChapters_rangeChapter_withoutPrefix() {
+        assertEquals("2-4", FileName.formatChapters(FileName.RangeChapter(2, 4)))
+    }
+
+    @Test
+    fun formatChapters_rangeChapter_withPrefix() {
+        assertEquals("Ch 2-4", FileName.formatChapters(FileName.RangeChapter(2, 4), withPrefix = true))
+    }
+
     private fun chapter(storyName: String, num: Int): Chapter =
         Chapter(
             storyId = StoryId(1),

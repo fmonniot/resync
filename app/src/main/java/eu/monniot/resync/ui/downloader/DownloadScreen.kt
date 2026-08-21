@@ -112,7 +112,7 @@ fun DownloadScreen(
             // wait for the driver to be attached to a running WebView
             driver.ready()
 
-            downloadLogic(context, storyId, chapterId, driverType, driver, setState)
+            downloadLogic(context.filesDir, storyId, chapterId, driverType, driver, setState)
 
             // Reaching DownloadState.Success is the end of the flow; onDone() is now only
             // called from the "Done" button on the Success screen (or from onCancel below).
@@ -231,7 +231,7 @@ fun DownloadScreen(
        action from there (see shareEpub) rather than something this function does itself.
      */
 suspend fun downloadLogic(
-    context: Context,
+    filesDir: File,
     storyId: StoryId,
     chapterId: ChapterId,
     driverType: DriverType,
@@ -265,7 +265,7 @@ suspend fun downloadLogic(
     // button on the Success screen, see shareEpub below) is currently the only upload path. A
     // future reimplementation of the cloud integration plugs back in here.
     // Read how to do so at https://developer.android.com/training/secure-file-sharing
-    val epubFile = context.filesDir.resolve("epub/$fileName")
+    val epubFile = filesDir.resolve("epub/$fileName")
     epubFile.parentFile?.mkdir()
     epubFile.writeBytes(epub)
 
