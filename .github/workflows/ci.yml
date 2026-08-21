@@ -31,8 +31,49 @@ jobs:
       - name: Lint
         run: bash ./gradlew lint --stacktrace
 
-      - name: Unit tests
-        run: bash ./gradlew test --stacktrace
+      - name: Unit tests & coverage report
+        run: bash ./gradlew test jacocoTestReport --stacktrace
+
+      - name: Restore main's coverage baseline
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v4
+        with:
+          path: coverage-baseline.txt
+          key: coverage-baseline-${{ github.sha }}
+          restore-keys: |
+            coverage-baseline-
+
+      - name: Check line coverage did not regress
+        if: github.event_name == 'pull_request'
+        run: |
+          PR_COVERAGE=$(python3 .github/scripts/jacoco_line_coverage.py app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml)
+          echo "PR line coverage: ${PR_COVERAGE}%"
+
+          if [ ! -f coverage-baseline.txt ]; then
+            echo "::warning::No cached coverage baseline found for main (cache missing or evicted) — skipping coverage regression check."
+            exit 0
+          fi
+
+          BASELINE=$(cat coverage-baseline.txt)
+          echo "main line coverage: ${BASELINE}%"
+          awk -v b="$BASELINE" -v p="$PR_COVERAGE" 'BEGIN {
+            if (p + 0 < b + 0) {
+              printf "::error::Line coverage decreased: %.2f%% (main) -> %.2f%% (PR)\n", b, p
+              exit 1
+            }
+            printf "Line coverage OK: %.2f%% (main) -> %.2f%% (PR)\n", b, p
+          }'
+
+      - name: Save coverage baseline for main
+        if: github.event_name == 'push'
+        run: python3 .github/scripts/jacoco_line_coverage.py app/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml > coverage-baseline.txt
+
+      - name: Cache coverage baseline for main
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: coverage-baseline.txt
+          key: coverage-baseline-${{ github.sha }}
 
       - name: Upload lint report
         if: always()
