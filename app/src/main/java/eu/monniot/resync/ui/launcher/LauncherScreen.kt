@@ -6,23 +6,38 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Devices
 import eu.monniot.resync.ui.ReSyncTheme
-import eu.monniot.resync.ui.icons.LibraryBooks
 
 
+// Nav bar approximates the design's FILL 0 -> FILL 1 swap on the active item (Material Symbols
+// variable font) using the Outlined/Rounded style families, since material-icons-extended has no
+// variable-fill glyphs. Consolidate deliberately keeps the books metaphor here rather than the
+// design's `sync` glyph - see the material-symbols-icons ticket's "Consolidate nav icon" section -
+// reusing `sync` for the nav bar would collide with its meaning as the Search screen's primary
+// action.
 enum class LauncherScreenItem(
     val sectionName: String,
     val topBarTitle: String,
-    val icon: ImageVector,
+    val iconOutline: ImageVector,
+    val iconFilled: ImageVector,
 ) {
-    Search("Search", "reSync", Icons.Filled.Search),
-    Consolidate("Consolidate", "Documents", LibraryBooks),
-    Settings("Settings", "Settings", Icons.Default.Settings)
+    Search("Search", "reSync", Icons.Outlined.Search, Icons.Rounded.Search),
+    Consolidate(
+        "Consolidate",
+        "Documents",
+        Icons.AutoMirrored.Outlined.LibraryBooks,
+        Icons.AutoMirrored.Rounded.LibraryBooks,
+    ),
+    Settings("Settings", "Settings", Icons.Outlined.Settings, Icons.Rounded.Settings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,10 +63,16 @@ fun LauncherScreen(
         bottomBar = {
             NavigationBar {
                 LauncherScreenItem.entries.forEach { item ->
+                    val itemSelected = selectedItem == item
                     NavigationBarItem(
-                        selected = selectedItem == item,
+                        selected = itemSelected,
                         onClick = { selectedItem = item },
-                        icon = { Icon(item.icon, contentDescription = null) },
+                        icon = {
+                            Icon(
+                                if (itemSelected) item.iconFilled else item.iconOutline,
+                                contentDescription = null,
+                            )
+                        },
                         label = { Text(item.sectionName) },
                     )
                 }
