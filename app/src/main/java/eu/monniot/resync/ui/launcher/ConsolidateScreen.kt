@@ -1,27 +1,12 @@
 package eu.monniot.resync.ui.launcher
 
 import android.app.Application
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.KeyboardArrowLeft
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
-// M3 ListItem/MaterialTheme are aliased to avoid clashing with the M2 `androidx.compose.material.*`
-// wildcard import above, which is still needed for ModalBottomSheetLayout/PullRefreshIndicator
-// (M2 usage removed in redesign-09) and for the M2 `ListItem` used by `DocumentBottomSheetView`.
-import androidx.compose.material3.Icon as M3Icon
-import androidx.compose.material3.ListItem as M3ListItem
-import androidx.compose.material3.MaterialTheme as M3MaterialTheme
-import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,12 +18,9 @@ import eu.monniot.resync.database.Document
 import eu.monniot.resync.database.DocumentsDao
 import eu.monniot.resync.database.RemarkableDatabase
 import eu.monniot.resync.ui.ReSyncTheme
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import eu.monniot.resync.FileName
 import kotlinx.coroutines.flow.*
 
@@ -94,7 +76,7 @@ fun ConsolidateScreen() {
     */
 }
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConsolidateView(
     initialized: ViewState,
@@ -116,10 +98,10 @@ fun ConsolidateView(
         ViewState.NotInitialized ->
             // TODO Is this feature still something I need ?
             Column(modifier = Modifier.fillMaxSize()) {
-                M3Text(
+                Text(
                     text = "TODO: Select a folder",
-                    style = M3MaterialTheme.typography.bodyLarge,
-                    color = M3MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -127,71 +109,55 @@ fun ConsolidateView(
 
         ViewState.Ok -> {
 
-            val modalBottomSheetState = rememberModalBottomSheetState(
-                initialValue = ModalBottomSheetValue.Hidden
-            )
-            val coroutineScope = rememberCoroutineScope()
+            var sheetDocument by remember { mutableStateOf<GroupedDocument?>(null) }
 
-            var bottomSheetDocument by remember { mutableStateOf<GroupedDocument?>(null) }
-
-            ModalBottomSheetLayout(
-                sheetState = modalBottomSheetState,
-                sheetContent = {
-                    val doc = bottomSheetDocument
-                    if (doc == null) {
-                        Text("No document selected")
-                    } else {
-                        DocumentBottomSheetView(doc)
-                    }
-                }
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = onRefresh,
             ) {
+                LazyColumn(Modifier.fillMaxSize()) {
+                    if (documents.isEmpty()) {
+                        item {
+                            ConsolidateEmptyState(
+                                // TODO(redesign-11): swap for Icons.Rounded.Inbox once the
+                                // Material Symbols icon set lands
+                                // (docs/tickets/redesign-11-material-symbols-icons.md) -
+                                // material-icons-core has no "inbox" glyph.
+                                icon = null,
+                                title = "No documents yet",
+                                subtitle = "Pull down to refresh",
+                                modifier = Modifier.fillParentMaxSize(),
+                            )
+                        }
+                    } else {
 
-                val pullRefreshState = rememberPullRefreshState(refreshing, onRefresh)
-
-                Box(Modifier.pullRefresh(pullRefreshState)) {
-                    LazyColumn(Modifier.fillMaxWidth()) {
-                        if (documents.isEmpty()) {
-                            item {
-                                ConsolidateEmptyState(
-                                    // TODO(redesign-11): swap for Icons.Rounded.Inbox once the
-                                    // Material Symbols icon set lands
-                                    // (docs/tickets/redesign-11-material-symbols-icons.md) -
-                                    // material-icons-core has no "inbox" glyph.
-                                    icon = null,
-                                    title = "No documents yet",
-                                    subtitle = "Pull down to refresh",
-                                    modifier = Modifier.fillParentMaxSize(),
-                                )
-                            }
-                        } else {
-
-                            // TODO Sort and group documents alphabetically
-                            items(documents) { doc ->
-                                M3ListItem(
-                                    headlineContent = { M3Text(doc.title) },
-                                    supportingContent = {
-                                        // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
-                                        // See also GroupedDocument data class
-                                        val text =
-                                            doc.chapters.joinToString { FileName.formatChapters(it) }
-                                        M3Text(text)
-                                    },
-                                    // TODO(redesign-11): add a leading Icons.Rounded.Description
-                                    // once the Material Symbols icon set lands
-                                    // (docs/tickets/redesign-11-material-symbols-icons.md) -
-                                    // material-icons-core has no "description" glyph.
-                                    modifier = Modifier.clickable {
-                                        bottomSheetDocument = doc
-                                        coroutineScope.launch {
-                                            modalBottomSheetState.show()
-                                        }
-                                    }
-                                )
-                            }
+                        // TODO Sort and group documents alphabetically
+                        items(documents) { doc ->
+                            ListItem(
+                                headlineContent = { Text(doc.title) },
+                                supportingContent = {
+                                    // TODO Join continuous chapters (eg. 1, 2, 3 as 1-3, or 1,2,3,5 as 1-3,5)
+                                    // See also GroupedDocument data class
+                                    val text =
+                                        doc.chapters.joinToString { FileName.formatChapters(it) }
+                                    Text(text)
+                                },
+                                // TODO(redesign-11): add a leading Icons.Rounded.Description
+                                // once the Material Symbols icon set lands
+                                // (docs/tickets/redesign-11-material-symbols-icons.md) -
+                                // material-icons-core has no "description" glyph.
+                                modifier = Modifier.clickable {
+                                    sheetDocument = doc
+                                }
+                            )
                         }
                     }
+                }
+            }
 
-                    PullRefreshIndicator(refreshing, pullRefreshState, Modifier.align(Alignment.TopCenter))
+            sheetDocument?.let { doc ->
+                ModalBottomSheet(onDismissRequest = { sheetDocument = null }) {
+                    DocumentBottomSheetView(doc)
                 }
             }
         }
@@ -211,28 +177,28 @@ private fun ConsolidateEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (icon != null) {
-            M3Icon(
+            Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                tint = M3MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        M3Text(
+        Text(
             text = title,
-            style = M3MaterialTheme.typography.titleMedium,
-            color = M3MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        M3Text(
+        Text(
             text = subtitle,
-            style = M3MaterialTheme.typography.bodyMedium,
-            color = M3MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
     }
@@ -242,26 +208,20 @@ private fun ConsolidateEmptyState(
 // compiler remind me that this function needs to be within a vertical
 // alignment (i.e. a Column).
 @Suppress("UnusedReceiverParameter")
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ColumnScope.DocumentBottomSheetView(document: GroupedDocument) {
 
     ListItem(
-        text = {
-            Text(
-                text = document.title,
-                style = MaterialTheme.typography.h6
-            )
+        headlineContent = {
+            Text(text = document.title)
         },
-        overlineText = {
-            Text(
-                text = "Story"
-            )
+        overlineContent = {
+            Text(text = "Story")
         }
     )
 
     ListItem(
-        text = {
+        headlineContent = {
             val text =
                 document.chapters.joinToString {
                     FileName.formatChapters(
@@ -272,47 +232,19 @@ fun ColumnScope.DocumentBottomSheetView(document: GroupedDocument) {
 
             Text(text)
         },
-        overlineText = {
-            Text(
-                text = "Files to consolidate"
-            )
+        overlineContent = {
+            Text(text = "Files to consolidate")
         }
     )
 
-    // Arrow direction depends on text direction, as icon/trailing will probably be reversed
-    // TODO Might make sense to create our own component instead of trying to retrofit ListItem
-    // Look at ListItem and OneLine.ListItem
-    ListItem(
+    Button(
+        onClick = { println("Consolidate it !") },
         modifier = Modifier
-            .background(MaterialTheme.colors.primary)
-            .clickable {
-                println("Consolidate it !")
-            },
-        icon = {
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = "Consolidate the story",
-                tint = MaterialTheme.colors.onPrimary
-            )
-        },
-        trailing = {
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-                contentDescription = "Consolidate the story",
-                tint = MaterialTheme.colors.onPrimary
-            )
-        },
-        text = {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Consolidate",
-                    style = MaterialTheme.typography.button,
-                    modifier = Modifier,
-                    color = MaterialTheme.colors.onPrimary
-                )
-            }
-        }
-    )
+            .fillMaxWidth()
+            .padding(16.dp),
+    ) {
+        Text("Consolidate")
+    }
 }
 
 @Preview
@@ -363,6 +295,10 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     // upsert it into `dao`, the way `RmClient.listDocuments()` used to before the direct
     // reMarkable Cloud integration was removed.
     fun refreshDocuments() {
+        // No-op for now (see TODO above). Flip the flag so the pull-to-refresh gesture
+        // still visibly completes instead of spinning forever.
+        isRefreshing.value = true
+        isRefreshing.value = false
     }
 
     companion object {
