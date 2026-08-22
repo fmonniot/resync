@@ -263,9 +263,19 @@ fun DocumentBottomSheetViewPreview() {
 // TODO Update to support multi account
 // Either by filtering docs based on the active account or by adding
 // some metadata on the items to indicate where they are coming from.
-class ConsolidateViewModel(application: Application) : AndroidViewModel(application) {
+//
+// Seam for testing: the primary constructor below needs a real Application/Room DB
+// (connectedAndroidTest territory), but everything this ViewModel actually does only
+// needs a DocumentsDao. The secondary constructor lets tests drive it with a fake DAO
+// instead — same pattern as ChapterReader in Driver.kt.
+class ConsolidateViewModel(application: Application, dao: DocumentsDao) :
+    AndroidViewModel(application) {
 
-    private val dao: DocumentsDao
+    constructor(application: Application) : this(
+        application,
+        RemarkableDatabase.getInstance(application).documentsDao()
+    )
+
     private val isRefreshing = MutableStateFlow(false)
     // The reMarkable Cloud integration was removed (see CLAUDE.md), so there is genuinely no
     // account to be found on startup. `NotInitialized` (folder selection) has no code path that
@@ -277,19 +287,11 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     val refreshing: StateFlow<Boolean>
         get() = isRefreshing.asStateFlow()
 
-    val documents: Flow<List<GroupedDocument>>
+    // TODO Load the initialized state from preferences
+    //  (a parent have been set, null if root have been selected)
 
-    init {
-        val db = RemarkableDatabase.getInstance(application)
-
-        dao = db.documentsDao()
-
-        // TODO Load the initialized state from preferences
-        //  (a parent have been set, null if root have been selected)
-
-        // TODO Manage with parent
-        documents = dao.getAll().map { group(it) }
-    }
+    // TODO Manage with parent
+    val documents: Flow<List<GroupedDocument>> = dao.getAll().map { group(it) }
 
     // TODO Re-entry point for a future cloud sync: pull the remote document list and
     // upsert it into `dao`, the way `RmClient.listDocuments()` used to before the direct
