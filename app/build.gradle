@@ -78,6 +78,12 @@ android {
     testOptions {
         unitTests {
             includeAndroidResources = true
+            // Robolectric's default graphicsMode (LEGACY) stubs out the rendering pipeline;
+            // Compose UI tests (createComposeRule) need real-enough measure/layout/draw to work,
+            // which requires NATIVE.
+            all {
+                it.systemProperty 'robolectric.graphicsMode', 'NATIVE'
+            }
         }
     }
 }
@@ -114,6 +120,14 @@ dependencies {
     debugImplementation libs.compose.ui.tooling
     implementation libs.androidx.lifecycle.viewmodel.compose
     implementation libs.androidx.activity.compose
+
+    // Compose UI testing (Robolectric-hosted, see testOptions.unitTests.all below for the
+    // graphicsMode this needs). ui-test-manifest is a debugImplementation upstream (it registers
+    // a test-only ComponentActivity via manifest merging for real instrumented tests), but
+    // Robolectric unit tests resolve it from the test classpath, so it's declared there too.
+    testImplementation libs.compose.ui.test.junit4
+    debugImplementation libs.compose.ui.test.manifest
+    testImplementation libs.compose.ui.test.manifest
 
 
     implementation libs.jsoup
