@@ -1,6 +1,5 @@
 package eu.monniot.resync.ui.launcher
 
-import android.app.Application
 import eu.monniot.resync.FileName
 import eu.monniot.resync.database.Document
 import eu.monniot.resync.database.DocumentsDao
@@ -8,10 +7,21 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 
+// Robolectric-backed: a bare `Application()` only satisfies the AndroidViewModel constructor
+// signature, it doesn't provide a working Application — any real method call on it throws
+// "Method ... not mocked" per CLAUDE.md's testing notes. RuntimeEnvironment.getApplication()
+// gives us a real (shadowed) Application instance instead. The pure `group()` tests below don't
+// touch Application at all, so this doesn't change their behavior.
+@RunWith(RobolectricTestRunner::class)
 class ConsolidateViewModelTest {
 
     @Test
@@ -74,7 +84,7 @@ class ConsolidateViewModelTest {
         )
         val dao = FakeDocumentsDao(docs)
 
-        val model = ConsolidateViewModel(Application(), dao)
+        val model = ConsolidateViewModel(RuntimeEnvironment.getApplication(), dao)
 
         val expected = ConsolidateViewModel.group(docs)
         Assert.assertEquals(expected, model.documents.first())
@@ -82,14 +92,22 @@ class ConsolidateViewModelTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun refreshDocuments_settlesBackToNotRefreshing() = runTest {
-        val model = ConsolidateViewModel(Application(), FakeDocumentsDao(emptyList()))
+    fun refreshDocuments_togglesRefreshingWhileRunningThenSettlesBack() = runTest {
+        val model = ConsolidateViewModel(RuntimeEnvironment.getApplication(), FakeDocumentsDao(emptyList()))
 
-        Assert.assertEquals(false, model.refreshing.value)
+        // refreshDocuments() suspends between flipping the flag on and off, so a collector
+        // running concurrently should observe both the `true` and the final `false`. Asserting
+        // only the value after the call returns would pass even if refreshDocuments() did
+        // nothing at all, since the writes are synchronous around the suspension point.
+        val emissions = mutableListOf<Boolean>()
+        val collector = launch { model.refreshing.collect { emissions.add(it) } }
+        runCurrent()
 
         model.refreshDocuments()
+        runCurrent()
 
-        Assert.assertEquals(false, model.refreshing.value)
+        collector.cancel()
+        Assert.assertEquals(listOf(false, true, false), emissions)
     }
 
     private fun doc(name: String): Document =

@@ -27,6 +27,8 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.unit.dp
 import eu.monniot.resync.FileName
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 
 // TODO Add a way to group together existing stories.
 // As time pass, I found out that I have a lot of epub
@@ -37,13 +39,14 @@ import kotlinx.coroutines.flow.*
 @Composable
 fun ConsolidateScreen() {
     val model: ConsolidateViewModel = viewModel()
+    val scope = rememberCoroutineScope()
 
     val initialized by model.initialized
     val documents by model.documents.collectAsState(emptyList())
     val refreshing by model.refreshing.collectAsState()
 
     ConsolidateView(initialized, refreshing, documents) {
-        model.refreshDocuments()
+        scope.launch { model.refreshDocuments() }
     }
 
     /* TODO List of steps
@@ -264,11 +267,11 @@ fun DocumentBottomSheetViewPreview() {
 // Either by filtering docs based on the active account or by adding
 // some metadata on the items to indicate where they are coming from.
 //
-// Seam for testing: the primary constructor below needs a real Application/Room DB
+// Seam for testing: the secondary constructor below needs a real Application/Room DB
 // (connectedAndroidTest territory), but everything this ViewModel actually does only
-// needs a DocumentsDao. The secondary constructor lets tests drive it with a fake DAO
+// needs a DocumentsDao. The primary constructor lets tests drive it with a fake DAO
 // instead — same pattern as ChapterReader in Driver.kt.
-class ConsolidateViewModel(application: Application, dao: DocumentsDao) :
+class ConsolidateViewModel(application: Application, private val dao: DocumentsDao) :
     AndroidViewModel(application) {
 
     constructor(application: Application) : this(
@@ -296,10 +299,12 @@ class ConsolidateViewModel(application: Application, dao: DocumentsDao) :
     // TODO Re-entry point for a future cloud sync: pull the remote document list and
     // upsert it into `dao`, the way `RmClient.listDocuments()` used to before the direct
     // reMarkable Cloud integration was removed.
-    fun refreshDocuments() {
+    suspend fun refreshDocuments() {
         // No-op for now (see TODO above). Flip the flag so the pull-to-refresh gesture
-        // still visibly completes instead of spinning forever.
+        // still visibly completes instead of spinning forever. The yield() gives collectors
+        // (the UI, or a test) a chance to actually observe the `true` state in between.
         isRefreshing.value = true
+        yield()
         isRefreshing.value = false
     }
 
