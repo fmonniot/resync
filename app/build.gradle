@@ -136,6 +136,18 @@ jacoco {
     toolVersion = "0.8.12"
 }
 
+// Robolectric reloads application classes through its own InstrumentingClassLoader, which
+// gives JaCoco's runtime agent execution data it can't otherwise map back to the on-disk
+// class files used for structural analysis below - includeNoLocationClasses tells the agent
+// to keep that data instead of silently dropping it. Experimental attempt at fixing the
+// blind spot tracked in docs/tickets/activity-subclass-jacoco-blindspot.md.
+tasks.withType(Test).configureEach {
+    jacoco {
+        includeNoLocationClasses = true
+        excludes = ['jdk.internal.*']
+    }
+}
+
 // JVM unit test coverage only (testDebugUnitTest) — the Room DB tests that require a real
 // Android environment live in connectedAndroidTest and aren't covered here.
 tasks.register('jacocoTestReport', JacocoReport) {
