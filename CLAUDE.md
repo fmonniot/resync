@@ -124,3 +124,36 @@ Consolidate only reflects whatever was written to the DB before the cloud integr
 - Code that touches `Context` directly (e.g. `context.filesDir`/`FileProvider` inside
   `downloadLogic`) is untestable as unit tests; existing TODOs suggest factoring it out as a
   parameter when touching that area.
+- **Compose UI testing** (`ConfirmChaptersTest` is the reference example): `app/build.gradle`
+  has `testImplementation libs.compose.ui.test.junit4` plus `debugImplementation`/
+  `testImplementation libs.compose.ui.test.manifest` (both resolve against the project's existing
+  `compose.bom`, no separate version needed), and `testOptions.unitTests.all` sets the system
+  property `robolectric.graphicsMode=NATIVE` — Robolectric's default `graphicsMode` (`LEGACY`)
+  stubs out measure/layout/draw, which `createComposeRule()` needs to actually work. Write the
+  test with `@RunWith(RobolectricTestRunner::class)` and `@get:Rule val composeRule =
+  createComposeRule()`, then drive it through real semantics (`onNodeWithText(...).performClick()`,
+  `performTouchInput { ... }`), not by calling the composable's private lambdas directly. Two
+  gotchas that cost real debugging time and are easy to hit again:
+  - Content inside an `AnimatedVisibility`/`animate*AsState` transition stays laid out at its
+    pre-animation size (e.g. 0×0 for an `expandVertically` enter) until the transition finishes.
+    A single big `composeRule.mainClock.advanceTimeBy(...)` does *not* carry it to completion
+    reliably; step the clock one frame at a time instead (see `ConfirmChaptersTest`'s
+    `settleAnimations()`) before interacting with anything inside it.
+  - A node pushed below the fold by a `verticalScroll` container reports zero-size bounds and
+    silently no-ops if you click it directly — call `.performScrollTo()` before `.performClick()`.
+- **JaCoCo can't see Robolectric-executed code in this project.** `./gradlew jacocoTestReport`
+  reports 0% for any method exercised *only* by a Robolectric test (`@RunWith
+  (RobolectricTestRunner::class)`), even though the test genuinely runs it — confirmed for
+  `DeepLinkActivity.parsePath` (`DeepLinkActivityTest`), `Driver.installGrabber` (`DriverTest`),
+  and `ConfirmChapters` (`ConfirmChaptersTest`), none of which are Compose-specific. The suspected
+  cause: JaCoCo 0.8.x instruments non-constructor methods via `invokedynamic`/`ConstantDynamic`
+  probes, and Robolectric's own bytecode rewriting (`ClassInstrumentor`, applied to any class it
+  decides needs Android-API shadowing) only special-cases *constructors* for already-instrumented
+  bytecode, silently dropping the probes everywhere else. Tried and rejected: a custom
+  `RobolectricTestRunner` excluding the class from Robolectric's rewriting via
+  `InstrumentationConfiguration.Builder.doNotInstrumentClass(...)` compiles and runs but doesn't
+  fix the coverage gap; the stronger `doNotAcquireClass(...)` (skip Robolectric's classloader for
+  that class entirely) throws `LinkageError` as soon as the excluded class exchanges Compose
+  types (e.g. `Composer`) with sandboxed Compose internals. Bottom line: write and trust
+  Robolectric tests as normal, but don't expect `jacocoTestReport`'s percentage to reflect what
+  they cover — that number currently only reflects plain-JVM (non-Robolectric) tests.
