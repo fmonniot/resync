@@ -129,7 +129,10 @@ abstract class Driver : ChapterReader {
         object RateLimited : RuntimeException()
         object WaitAndTryAgain : RuntimeException()
 
-        private const val extractSourceUrl =
+        // internal rather than private: DriverTest references this directly instead of
+        // duplicating the literal, so a change here can't silently desync from what the
+        // test waits for.
+        internal const val extractSourceUrl =
             "javascript:window.grabber.extractSource(document.querySelector('html').innerHTML);"
 
         private class JsInterface {
