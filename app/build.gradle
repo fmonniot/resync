@@ -136,11 +136,15 @@ jacoco {
     toolVersion = "0.8.12"
 }
 
-// Robolectric reloads application classes through its own InstrumentingClassLoader, which
-// gives JaCoco's runtime agent execution data it can't otherwise map back to the on-disk
-// class files used for structural analysis below - includeNoLocationClasses tells the agent
-// to keep that data instead of silently dropping it. Experimental attempt at fixing the
-// blind spot tracked in docs/tickets/activity-subclass-jacoco-blindspot.md.
+// Robolectric loads application classes through its own InstrumentingClassLoader, so the
+// JaCoco agent sees them without a code-source location and, by default, drops their
+// execution data - which is why every Robolectric-based test previously contributed 0%.
+// includeNoLocationClasses tells the agent to keep that data so it can be mapped back to
+// the on-disk class files used for structural analysis below. Required, not optional:
+// without it Driver.kt reports 27.4% instead of 87.1%, and the coverage regression gate in
+// .github/workflows/ci.yml is measured against the inflated-by-this-fix baseline.
+// jdk.internal.* is excluded below because otherwise the agent trips over JDK-internal
+// lambda classes that Robolectric's classloader also ends up touching.
 tasks.withType(Test).configureEach {
     jacoco {
         includeNoLocationClasses = true

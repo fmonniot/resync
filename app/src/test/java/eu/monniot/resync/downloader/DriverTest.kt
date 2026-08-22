@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
 // Using Robolectric to have access to a real android.webkit.WebView in unit tests.
@@ -100,9 +101,17 @@ class DriverTest {
     // back as Any - Driver's JsInterface is private, so it can't be named here - and
     // reflection stands in for what the injected JS would do: call its
     // @JavascriptInterface extractSource method.
-    private fun awaitJsInterface(view: WebView): Any {
+    // Bounded so a regression that stops readChapter from registering the interface (or
+    // renames it) fails this loop on its own timeline instead of spinning until whatever
+    // eventually notices - see the two call sites below for how that failure gets back to
+    // the test's main thread.
+    private fun awaitJsInterface(view: WebView, timeoutMs: Long = AWAIT_TIMEOUT_MS): Any {
+        val deadline = System.currentTimeMillis() + timeoutMs
         var jsInterface: Any? = Shadows.shadowOf(view).getJavascriptInterface("grabber")
         while (jsInterface == null) {
+            check(System.currentTimeMillis() < deadline) {
+                "readChapter never registered a \"grabber\" @JavascriptInterface within ${timeoutMs}ms"
+            }
             Thread.sleep(1)
             jsInterface = Shadows.shadowOf(view).getJavascriptInterface("grabber")
         }
@@ -142,25 +151,41 @@ class DriverTest {
 
         // Stands in for "the page loaded, the extractor script ran, and the JS bridge
         // handed the HTML back" - runs on a real thread since it must happen concurrently
-        // with readChapter suspending on jsInterface.waitForHtml() below.
-        val feeder = thread {
-            val jsInterface = awaitJsInterface(view)
-            extractSource(jsInterface, rawHtml)
+        // with readChapter suspending on jsInterface.waitForHtml() below. isDaemon so a
+        // failure that leaves this thread unable to make progress can't keep the JVM
+        // alive past the test run; feederError carries any exception back to the main
+        // thread instead of it being silently swallowed by the thread's default
+        // uncaught-exception handler.
+        val feederError = AtomicReference<Throwable?>()
+        val feeder = thread(isDaemon = true) {
+            try {
+                val jsInterface = awaitJsInterface(view)
+                extractSource(jsInterface, rawHtml)
+            } catch (t: Throwable) {
+                feederError.compareAndSet(null, t)
+            }
         }
 
-        val chapter = driver.readChapter(storyId, chapterId)
-        feeder.join()
+        try {
+            val chapter = driver.readChapter(storyId, chapterId)
 
-        // JsInterface.extractSource wraps whatever the JS bridge hands back in an <html>
-        // tag (document.querySelector('html').innerHTML strips it on the real page), so
-        // that's what readChapter actually parses and caches - not the raw fixture.
-        val wrappedHtml = "<html>$rawHtml</html>"
-        assertEquals(driver.parseWebPage(wrappedHtml, storyId, chapterId), chapter)
-        assertEquals(
-            "the fetched HTML should be written through to the on-disk cache",
-            wrappedHtml,
-            driver.storyCacheDir(storyId).resolve(chapterCacheFileName(chapterId)).readText()
-        )
+            // JsInterface.extractSource wraps whatever the JS bridge hands back in an
+            // <html> tag (document.querySelector('html').innerHTML strips it on the real
+            // page), so that's what readChapter actually parses and caches - not the raw
+            // fixture.
+            val wrappedHtml = "<html>$rawHtml</html>"
+            assertEquals(driver.parseWebPage(wrappedHtml, storyId, chapterId), chapter)
+            assertEquals(
+                "the fetched HTML should be written through to the on-disk cache",
+                wrappedHtml,
+                driver.storyCacheDir(storyId).resolve(chapterCacheFileName(chapterId)).readText()
+            )
+        } finally {
+            // Always joined, even if the assertions above threw first, so the feeder
+            // thread never outlives this test method.
+            feeder.join(AWAIT_TIMEOUT_MS)
+        }
+        feederError.get()?.let { throw it }
     }
 
     @Test
@@ -176,41 +201,66 @@ class DriverTest {
         val cloudflareHtml = getResourceAsText("ffnet/s-cloudflare.html")
         val realHtml = getResourceAsText("ffnet/s-3384712-23.html")
 
-        val feeder = thread {
-            val jsInterface = awaitJsInterface(view)
+        val retryTimeoutMessage =
+            "expected exactly one retry: the extractor script reloaded once after the Cloudflare interstitial"
 
-            // First response looks like FF.Net's Cloudflare interstitial: readChapter
-            // should treat this as WaitAndTryAgain and retry, not propagate the exception.
-            extractSource(jsInterface, cloudflareHtml)
+        val feederError = AtomicReference<Throwable?>()
+        val feeder = thread(isDaemon = true) {
+            try {
+                val jsInterface = awaitJsInterface(view)
 
-            // Wait for readChapter's retry branch to reload the extractor script before
-            // feeding the real chapter through - it's the same JsInterface instance the
-            // whole time (its internal CompletableDeferred is reset, not replaced), so
-            // feeding the real HTML too early would land on the already-completed first
-            // deferred and be silently dropped.
-            while (view.loadCount(EXTRACT_SOURCE_URL) < 1) {
-                Thread.sleep(1)
+                // First response looks like FF.Net's Cloudflare interstitial: readChapter
+                // should treat this as WaitAndTryAgain and retry, not propagate the
+                // exception.
+                extractSource(jsInterface, cloudflareHtml)
+
+                // Wait for readChapter's retry branch to reload the extractor script
+                // before feeding the real chapter through - it's the same JsInterface
+                // instance the whole time (its internal CompletableDeferred is reset, not
+                // replaced), so feeding the real HTML too early would land on the
+                // already-completed first deferred and be silently dropped.
+                val deadline = System.currentTimeMillis() + AWAIT_TIMEOUT_MS
+                while (view.loadCount(Driver.extractSourceUrl) < 1) {
+                    if (System.currentTimeMillis() >= deadline) {
+                        // Record the failure, but still feed the real HTML through below:
+                        // without that, readChapter stays suspended on
+                        // jsInterface.waitForHtml() forever (nothing else can complete
+                        // it), and this diagnostic would never reach the main thread -
+                        // the test would instead hang until runTest's own ~60s watchdog
+                        // and fail with an opaque UncompletedCoroutinesError instead.
+                        feederError.compareAndSet(null, AssertionError(retryTimeoutMessage))
+                        break
+                    }
+                    Thread.sleep(1)
+                }
+                extractSource(jsInterface, realHtml)
+            } catch (t: Throwable) {
+                feederError.compareAndSet(null, t)
             }
-            extractSource(jsInterface, realHtml)
         }
 
-        val chapter = driver.readChapter(storyId, chapterId)
-        feeder.join()
+        try {
+            val chapter = driver.readChapter(storyId, chapterId)
+            feederError.get()?.let { throw it }
 
-        val wrappedHtml = "<html>$realHtml</html>"
-        assertEquals(driver.parseWebPage(wrappedHtml, storyId, chapterId), chapter)
-        assertEquals(
-            "expected exactly one retry: the extractor script reloaded once after the Cloudflare interstitial",
-            1,
-            view.loadCount(EXTRACT_SOURCE_URL)
-        )
+            val wrappedHtml = "<html>$realHtml</html>"
+            assertEquals(driver.parseWebPage(wrappedHtml, storyId, chapterId), chapter)
+            assertEquals(
+                retryTimeoutMessage,
+                1,
+                view.loadCount(Driver.extractSourceUrl)
+            )
+        } finally {
+            feeder.join(AWAIT_TIMEOUT_MS)
+        }
+        feederError.get()?.let { throw it }
     }
 
     companion object {
-        // Mirrors Driver's own private extractSourceUrl companion constant, which isn't
-        // visible outside Driver - duplicated here so the retry test can recognize when
-        // readChapter reloads the extractor script.
-        private const val EXTRACT_SOURCE_URL =
-            "javascript:window.grabber.extractSource(document.querySelector('html').innerHTML);"
+        // Deadline for the polling loops above: long enough not to flake under normal
+        // (sub-millisecond) scheduling, short enough that a genuine regression fails in
+        // seconds instead of riding runTest's own ~60s watchdog to an opaque
+        // UncompletedCoroutinesError.
+        private const val AWAIT_TIMEOUT_MS = 10_000L
     }
 }
