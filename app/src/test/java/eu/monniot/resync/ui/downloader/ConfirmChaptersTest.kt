@@ -3,9 +3,8 @@ package eu.monniot.resync.ui.downloader
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -45,23 +44,28 @@ import org.robolectric.RobolectricTestRunner
  *    carry the animation to completion under Robolectric - the child stays laid out at its
  *    animation-start size (0x0), so anything inside it is untappable. Stepping the clock one
  *    frame at a time via [settleAnimations] does.
- * 2. The two-thumb [androidx.compose.material3.RangeSlider] doesn't expose a stable per-thumb id
- *    (only "Range start"/"Range end" a11y content descriptions), so [ConfirmChapters] tags the
- *    slider itself ([CHAPTER_RANGE_SLIDER_TEST_TAG]) and these tests drag against its bounds.
- *    RangeSlider always captures whichever thumb is nearest the touch-down point (ties go to
- *    whichever thumb still has room to move away from the other), so a drag starting at one edge
- *    and overshooting past the opposite edge deterministically slams that edge's thumb all the
- *    way to the far end, landing exactly on a known chapter number regardless of the slider's
- *    exact pixel layout:
+ * 2. The two-thumb [androidx.compose.material3.RangeSlider] doesn't expose a stable per-thumb
+ *    test tag - only the "Range start"/"Range end" a11y content descriptions Material3 attaches
+ *    to each thumb by default - so these tests grab a thumb directly with
+ *    [onNodeWithContentDescription] and drag from *that thumb's own on-screen position*, instead
+ *    of computing an edge-to-edge swipe against the slider's bounds. That distinction matters
+ *    because of how RangeSlider decides which thumb a touch captures
+ *    (`rangeSliderPressDragModifier` in Material3's `Slider.kt`): it picks whichever thumb is
+ *    nearest the touch-down point, *unless* both thumbs are within touch-slop of that point, in
+ *    which case it instead picks based on the initial drag direction. Touching down exactly on a
+ *    named thumb's own position makes the nearest-thumb rule trivially pick that thumb (distance
+ *    to itself is zero, which is never more than the other thumb's distance) - and even once the
+ *    two thumbs are dragged on top of each other, where the slop-based direction rule also kicks
+ *    in, dragging further in the same direction still resolves to the same thumb. So both rules
+ *    agree regardless of which one actually applies at runtime, and which content-description
+ *    node the test happened to target keeps controlling the outcome. [dragFarLeft] and
+ *    [dragFarRight] then overshoot far past the slider's opposite edge so each drag reliably
+ *    clamps at `valueRange`'s floor/ceiling instead of landing on some layout-dependent pixel:
  *      - totalChapters = 10, initial range is chapterStart=1 (left edge) .. chapterEnd=10 (right
- *        edge). [dragFromRightEdgeToLeftEdge] grabs the end thumb (nearest the touch-down point
- *        at the right) and drags it past the left edge -> clamps at chapterStart's value (1) ->
- *        both thumbs meet -> `ChapterSelection.One(1)`.
- *      - A further [dragFromLeftEdgeToRightEdge] from that merged-at-1 state (touch-down at the
- *        left edge, tied between both co-located thumbs, resolved to the thumb that still has
- *        room to move - the start thumb is pinned at the valueRange floor, so it's the end thumb
- *        again) drags the end thumb past the right edge -> clamps at totalChapters (10) ->
- *        `ChapterSelection.Range(1, 10)`.
+ *        edge). Dragging the "Range end" thumb far left ([dragFarLeft]) clamps it at
+ *        chapterStart's value (1) -> both thumbs meet -> `ChapterSelection.One(1)`.
+ *      - Dragging that same "Range end" thumb back out ([dragFarRight]) from the merged-at-1
+ *        state clamps it at totalChapters (10) -> `ChapterSelection.Range(1, 10)`.
  *
  * Rendering the whole composable also exercises nearly all of its non-interactive lines (every
  * Text/Modifier call runs on composition), so these four interaction tests genuinely cover
@@ -106,16 +110,16 @@ class ConfirmChaptersTest {
         mainClock.autoAdvance = true
     }
 
-    // See class doc point 2: a plain swipeLeft()/swipeRight() (edge to edge, exactly) lands one
-    // discrete step short of the boundary in practice - RangeSlider insets its draggable track by
-    // half a thumb-width, so the node's literal edge coordinate doesn't quite reach the last step.
-    // Overshooting well past the opposite edge sidesteps that and reliably clamps at the boundary.
-    private fun TouchInjectionScope.dragFromRightEdgeToLeftEdge() {
-        swipe(Offset(right, centerY), Offset(left - width, centerY), durationMillis = 200)
+    // See class doc point 2: dragging starts from the targeted thumb's own center rather than
+    // the slider's edges, and overshoots by a distance no reasonably-sized test screen's
+    // RangeSlider could span, so the drag reliably clamps at the value range's floor/ceiling
+    // regardless of the slider's actual pixel layout.
+    private fun TouchInjectionScope.dragFarLeft() {
+        swipe(center, Offset(centerX - FAR_DRAG_DISTANCE_PX, centerY), durationMillis = 200)
     }
 
-    private fun TouchInjectionScope.dragFromLeftEdgeToRightEdge() {
-        swipe(Offset(left, centerY), Offset(right + width, centerY), durationMillis = 200)
+    private fun TouchInjectionScope.dragFarRight() {
+        swipe(center, Offset(centerX + FAR_DRAG_DISTANCE_PX, centerY), durationMillis = 200)
     }
 
     @Test
@@ -140,8 +144,8 @@ class ConfirmChaptersTest {
         composeRule.onNodeWithText("Choose specific chapters").performClick()
         composeRule.settleAnimations()
 
-        composeRule.onNodeWithTag(CHAPTER_RANGE_SLIDER_TEST_TAG)
-            .performTouchInput { dragFromRightEdgeToLeftEdge() }
+        composeRule.onNodeWithContentDescription("Range end")
+            .performTouchInput { dragFarLeft() }
 
         composeRule.onNodeWithText("Download chapter 1")
             .performScrollTo()
@@ -162,14 +166,14 @@ class ConfirmChaptersTest {
         composeRule.onNodeWithText("Choose specific chapters").performClick()
         composeRule.settleAnimations()
 
-        val rangeSlider = composeRule.onNodeWithTag(CHAPTER_RANGE_SLIDER_TEST_TAG)
+        val endThumb = composeRule.onNodeWithContentDescription("Range end")
 
         // Converge both thumbs at chapter 1 first (see class doc), then drag them back apart -
         // this exercises both the One and Range branches of the confirm button, not just Range.
-        rangeSlider.performTouchInput { dragFromRightEdgeToLeftEdge() }
+        endThumb.performTouchInput { dragFarLeft() }
         composeRule.onNodeWithText("Download chapter 1").assertExists()
 
-        rangeSlider.performTouchInput { dragFromLeftEdgeToRightEdge() }
+        endThumb.performTouchInput { dragFarRight() }
 
         // En dash (U+2013), not a hyphen - see the composable's own comment on this string.
         composeRule.onNodeWithText("Download chapters 1–10")
@@ -189,3 +193,8 @@ class ConfirmChaptersTest {
         assertTrue(cancelled)
     }
 }
+
+// Overshoot distance for [ConfirmChaptersTest.dragFarLeft]/[ConfirmChaptersTest.dragFarRight]:
+// comfortably larger than any RangeSlider width this test could plausibly render at, so the
+// drag's destination always lies past the slider's opposite edge and clamps there.
+private const val FAR_DRAG_DISTANCE_PX = 10_000f

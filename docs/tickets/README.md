@@ -17,4 +17,3 @@ tickets are deleted from this directory once merged — see git history for anyt
 - [Exclude @Preview-only composables from the coverage report](exclude-preview-composables-from-coverage.md)
 - [Unit test errorDetailsText](error-details-text-coverage.md)
 - [Extract a DAO seam so ConsolidateViewModel's instance logic is unit-testable](consolidate-viewmodel-testability-seam.md)
-- [JaCoco reports 0% on Activity subclasses despite passing Robolectric tests](activity-subclass-jacoco-blindspot.md)

@@ -122,12 +122,13 @@ dependencies {
     implementation libs.androidx.activity.compose
 
     // Compose UI testing (Robolectric-hosted, see testOptions.unitTests.all below for the
-    // graphicsMode this needs). ui-test-manifest is a debugImplementation upstream (it registers
-    // a test-only ComponentActivity via manifest merging for real instrumented tests), but
-    // Robolectric unit tests resolve it from the test classpath, so it's declared there too.
+    // graphicsMode this needs). ui-test-manifest registers a test-only ComponentActivity via
+    // manifest merging; Robolectric unit tests pick it up from the merged debug-variant manifest
+    // (processDebugUnitTestManifest merges AAR manifests from the tested/debug variant, not from
+    // the test runtime classpath), so debugImplementation alone is required and sufficient - a
+    // testImplementation copy of the same dependency is a no-op.
     testImplementation libs.compose.ui.test.junit4
     debugImplementation libs.compose.ui.test.manifest
-    testImplementation libs.compose.ui.test.manifest
 
 
     implementation libs.jsoup

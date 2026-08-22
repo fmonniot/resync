@@ -42,7 +42,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -69,10 +68,6 @@ import java.io.File
 import java.lang.NumberFormatException
 
 private const val TAG = "DownloadFic"
-
-// Exposed (not `private`) so ConfirmChaptersTest, in the same module's test source set, can
-// target the RangeSlider by the same tag without duplicating the literal.
-internal const val CHAPTER_RANGE_SLIDER_TEST_TAG = "chapterRangeSlider"
 
 @Composable
 fun DownloadScreen(
@@ -851,11 +846,6 @@ fun ConfirmChapters(
                                 },
                                 valueRange = 1f..totalChapters.toFloat(),
                                 steps = (totalChapters - 2).coerceAtLeast(0),
-                                // Tagged so Compose UI tests can drive it with performTouchInput
-                                // against its own bounds (ConfirmChaptersTest) - RangeSlider's
-                                // two thumbs only expose "Range start"/"Range end" a11y
-                                // semantics, not a stable id to swipe against.
-                                modifier = Modifier.testTag(CHAPTER_RANGE_SLIDER_TEST_TAG),
                             )
 
                             // Track bounds, not the current selection - the selection is
