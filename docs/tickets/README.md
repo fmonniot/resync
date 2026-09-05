@@ -9,7 +9,6 @@ tickets are deleted from this directory once merged — see git history for anyt
 - [Nav bar stays visible over full-screen download states reached from Search](nav-bar-over-search-download.md)
 - [Cover DownloadScreen's remaining state composables](download-screen-remaining-state-composables-coverage.md)
 - [Cover StorySelectionView and ConsolidateView with Compose UI tests](search-and-consolidate-screen-compose-coverage.md)
-- [Cover Driver.readChapter's network-fetch and rate-limit-retry path](driver-readchapter-network-path-coverage.md)
 
 ## Low / trivial
 
