@@ -27,6 +27,8 @@ import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.unit.dp
 import eu.monniot.resync.FileName
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 
 // TODO Add a way to group together existing stories.
 // As time pass, I found out that I have a lot of epub
@@ -37,13 +39,14 @@ import kotlinx.coroutines.flow.*
 @Composable
 fun ConsolidateScreen() {
     val model: ConsolidateViewModel = viewModel()
+    val scope = rememberCoroutineScope()
 
     val initialized by model.initialized
     val documents by model.documents.collectAsState(emptyList())
     val refreshing by model.refreshing.collectAsState()
 
     ConsolidateView(initialized, refreshing, documents) {
-        model.refreshDocuments()
+        scope.launch { model.refreshDocuments() }
     }
 
     /* TODO List of steps
@@ -263,9 +266,19 @@ fun DocumentBottomSheetViewPreview() {
 // TODO Update to support multi account
 // Either by filtering docs based on the active account or by adding
 // some metadata on the items to indicate where they are coming from.
-class ConsolidateViewModel(application: Application) : AndroidViewModel(application) {
+//
+// Seam for testing: the secondary constructor below needs a real Application/Room DB
+// (connectedAndroidTest territory), but everything this ViewModel actually does only
+// needs a DocumentsDao. The primary constructor lets tests drive it with a fake DAO
+// instead — same pattern as ChapterReader in Driver.kt.
+class ConsolidateViewModel(application: Application, private val dao: DocumentsDao) :
+    AndroidViewModel(application) {
 
-    private val dao: DocumentsDao
+    constructor(application: Application) : this(
+        application,
+        RemarkableDatabase.getInstance(application).documentsDao()
+    )
+
     private val isRefreshing = MutableStateFlow(false)
     // The reMarkable Cloud integration was removed (see CLAUDE.md), so there is genuinely no
     // account to be found on startup. `NotInitialized` (folder selection) has no code path that
@@ -277,27 +290,21 @@ class ConsolidateViewModel(application: Application) : AndroidViewModel(applicat
     val refreshing: StateFlow<Boolean>
         get() = isRefreshing.asStateFlow()
 
-    val documents: Flow<List<GroupedDocument>>
+    // TODO Load the initialized state from preferences
+    //  (a parent have been set, null if root have been selected)
 
-    init {
-        val db = RemarkableDatabase.getInstance(application)
-
-        dao = db.documentsDao()
-
-        // TODO Load the initialized state from preferences
-        //  (a parent have been set, null if root have been selected)
-
-        // TODO Manage with parent
-        documents = dao.getAll().map { group(it) }
-    }
+    // TODO Manage with parent
+    val documents: Flow<List<GroupedDocument>> = dao.getAll().map { group(it) }
 
     // TODO Re-entry point for a future cloud sync: pull the remote document list and
     // upsert it into `dao`, the way `RmClient.listDocuments()` used to before the direct
     // reMarkable Cloud integration was removed.
-    fun refreshDocuments() {
+    suspend fun refreshDocuments() {
         // No-op for now (see TODO above). Flip the flag so the pull-to-refresh gesture
-        // still visibly completes instead of spinning forever.
+        // still visibly completes instead of spinning forever. The yield() gives collectors
+        // (the UI, or a test) a chance to actually observe the `true` state in between.
         isRefreshing.value = true
+        yield()
         isRefreshing.value = false
     }
 

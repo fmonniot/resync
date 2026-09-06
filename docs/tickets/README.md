@@ -15,4 +15,3 @@ tickets are deleted from this directory once merged — see git history for anyt
 - [Comments contradict the code they describe](comment-drift.md)
 - [Exclude @Preview-only composables from the coverage report](exclude-preview-composables-from-coverage.md)
 - [Unit test errorDetailsText](error-details-text-coverage.md)
-- [Extract a DAO seam so ConsolidateViewModel's instance logic is unit-testable](consolidate-viewmodel-testability-seam.md)
