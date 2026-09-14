@@ -2,7 +2,7 @@
 agp = "9.5.0-alpha03"
 kotlin = "2.4.10"
 ksp = "2.3.11"
-room = "2.8.4"
+room = "2.8.5"
 kotlinxCollectionsImmutable = "0.5.2"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
