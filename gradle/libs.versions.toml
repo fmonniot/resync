@@ -1,7 +1,7 @@
 [versions]
 agp = "9.5.0-alpha05"
 kotlin = "2.4.20"
-ksp = "2.3.11"
+ksp = "2.3.12"
 room = "2.8.5"
 kotlinxCollectionsImmutable = "0.5.2"
 coreKtx = "1.19.0"
