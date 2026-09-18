@@ -1,6 +1,6 @@
 [versions]
 agp = "9.5.0-alpha03"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 ksp = "2.3.11"
 room = "2.8.4"
 kotlinxCollectionsImmutable = "0.5.2"
