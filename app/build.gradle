@@ -51,6 +51,7 @@ android {
         minSdkVersion 30
         targetSdkVersion 35
         compileSdk = 37
+        compileSdkMinor = 1
 
         applicationId "eu.monniot.resync"
         versionCode gitCommitCount
